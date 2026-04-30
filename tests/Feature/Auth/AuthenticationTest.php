@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
@@ -16,6 +17,9 @@ test('login screen can be rendered', function () {
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
+    Log::spy();
+    Log::shouldReceive('channel')->andReturnSelf();
+
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
@@ -23,6 +27,14 @@ test('users can authenticate using the login screen', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
+
+    Log::shouldHaveReceived('info')
+        ->with('Login exitoso', Mockery::on(function (array $context) use ($user): bool {
+            return $context['user_id'] === $user->id_user
+                && $context['ip'] === '127.0.0.1'
+                && $context['username'] === $user->email;
+        }))
+        ->once();
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
@@ -54,12 +66,23 @@ test('users with two factor enabled are redirected to two factor challenge', fun
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 
+    Log::spy();
+    Log::shouldReceive('channel')->andReturnSelf();
+
     $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'wrong-password',
     ]);
 
     $this->assertGuest();
+
+    Log::shouldHaveReceived('warning')
+        ->with('Intento de login fallido', Mockery::on(function (array $context) use ($user): bool {
+            return $context['user_id'] === $user->id_user
+                && $context['ip'] === '127.0.0.1'
+                && $context['username'] === $user->email;
+        }))
+        ->once();
 });
 
 test('pending users cannot authenticate until approved', function () {
@@ -74,6 +97,24 @@ test('pending users cannot authenticate until approved', function () {
 
     $response->assertSessionHasErrors([
         'email' => 'Su cuenta aún no ha sido aprobada',
+    ]);
+
+    $this->assertGuest();
+});
+
+test('disabled users cannot authenticate', function () {
+    $user = User::factory()->create([
+        'estado' => 'aprobado',
+        'habilitado' => false,
+    ]);
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response->assertSessionHasErrors([
+        'email' => 'Su cuenta ha sido deshabilitada. Contacte con un administrador.',
     ]);
 
     $this->assertGuest();

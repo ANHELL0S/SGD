@@ -1,283 +1,340 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
+import {
+    CalendarDays,
+    AlertCircle,
+    FileText,
+    Layers,
+    Tag,
+    Upload,
+    User,
+} from 'lucide-react';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProcessingOverlay } from '@/components/ui/processing-overlay';
 import { Progress } from '@/components/ui/progress';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 
 type Remitente = {
-	id_remitente: number;
-	nombre: string;
+    id_remitente: number;
+    nombre: string;
 };
 
 type Props = {
-	remitentes: Remitente[];
-	tipos: string[];
+    remitentes: Remitente[];
+    tipos: string[];
 };
 
 type FormData = {
-	numero_oficio: string;
-	fecha_oficio: string;
-	remitente_id: string;
-	tipo: string;
-	palabra_clave: string;
-	archivo: File | null;
+    numero_oficio: string;
+    asunto: string;
+    fecha_oficio: string;
+    remitente_id: string;
+    tipo: string;
+    palabra_clave: string;
+    archivo: File | null;
 };
 
-export default function Create({ remitentes, tipos }: Props) {
-    const { data, setData, post, processing, progress, errors, reset } = useForm<FormData>({
-        numero_oficio: '',
-        fecha_oficio: '',
-        remitente_id: '',
-        tipo: '',
-        palabra_clave: '',
-        archivo: null,
-    });
-
-    const pdfPreviewUrl = useMemo(() => {
-        if (!data.archivo) {
-return null;
+// Componente FormField optimizado
+function FormField({
+    label,
+    required,
+    icon: Icon,
+    error,
+    children,
+    className = '',
+}: {
+    label: string;
+    required?: boolean;
+    icon: React.ElementType;
+    error?: string;
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <div className={`space-y-1.5 ${className}`}>
+            <Label className="flex items-center gap-1.5 text-sm font-medium text-[var(--secondary-foreground)]/70">
+                <Icon className="h-3.5 w-3.5 text-[var(--primary)]" />
+                {label}
+                {required && <span className="text-destructive">*</span>}
+            </Label>
+            {children}
+            {error && <InputError message={error} />}
+        </div>
+    );
 }
 
+export default function Create({ remitentes, tipos }: Props) {
+    const { data, setData, post, processing, progress, errors, reset } =
+        useForm<FormData>({
+            numero_oficio: '',
+            asunto: '',
+            fecha_oficio: '',
+            remitente_id: '',
+            tipo: '',
+            palabra_clave: '',
+            archivo: null,
+        });
+
+    // Manejo de la URL de vista previa para evitar fugas de memoria
+    const pdfPreviewUrl = useMemo(() => {
+        if (!data.archivo) return null;
         return URL.createObjectURL(data.archivo);
     }, [data.archivo]);
 
     useEffect(() => {
         return () => {
-            if (pdfPreviewUrl) {
-URL.revokeObjectURL(pdfPreviewUrl);
-}
+            if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
         };
     }, [pdfPreviewUrl]);
 
     const handleFile = (file: File | null): void => {
-        if (processing) {
-            return;
-        }
-
+        if (processing) return;
         setData('archivo', file);
     };
 
-    const shouldRenderProgress = Boolean(data.archivo) && (processing || Boolean(progress));
-    const isServerProcessing = processing && Boolean(progress) && (progress?.percentage ?? 0) >= 100;
-    const currentUploadPercentage = progress?.percentage ?? 0;
-    const displayProgress = progress
-        ? (processing ? Math.min(currentUploadPercentage, 90) : currentUploadPercentage)
-        : (processing ? 90 : 0);
-
     const onDrop = (event: React.DragEvent<HTMLDivElement>): void => {
         event.preventDefault();
-
-        if (processing) {
-            return;
+        if (processing) return;
+        const file = event.dataTransfer.files?.[0];
+        if (file?.type === 'application/pdf') {
+            handleFile(file);
         }
-
-        handleFile(event.dataTransfer.files?.[0] ?? null);
     };
 
     const onSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
         event.preventDefault();
         post(DocumentoController.store.url(), {
             forceFormData: true,
-            onSuccess: () => reset('numero_oficio', 'fecha_oficio', 'remitente_id', 'tipo', 'palabra_clave', 'archivo'),
+            onSuccess: () => {
+                reset();
+                toast.success('El oficio fue creado correctamente.');
+            },
         });
     };
+
+    // Lógica de progreso
+    const shouldRenderProgress = Boolean(data.archivo) && (processing || Boolean(progress));
+    const isServerProcessing = processing && (progress?.percentage ?? 0) >= 100;
+    const displayProgress = progress?.percentage ?? 0;
 
     return (
         <>
             <Head title="Subir documento" />
+            <ProcessingOverlay
+                show={processing}
+                message={isServerProcessing ? 'Procesando documento...' : 'Subiendo archivo...'}
+            />
 
-            <div className="space-y-4 p-4 md:p-6">
-
-                {/* Header */}
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-xl font-semibold">Subir documento</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Registra un nuevo oficio y extrae su contenido OCR automaticamente.
-                        </p>
+            <div className="mx-auto w-full max-w-screen-xl p-4 md:p-6 lg:p-8">
+                {/* Header Superior */}
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                        <div className='flex items-center gap-4 '>
+                           <Button asChild variant="ghost" size="icon" className="rounded-full shrink-0 mt-0.5">
+                        <Link href={DocumentoController.index.url()}>
+                            <ArrowLeft className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                            <h1 className="text-xl font-bold tracking-tight text-[var(--text)]">Subir documento</h1>
+                            <p className="text-xs text-muted-foreground">Llena los datos y adjunta el PDF correspondiente.</p>
+                        </div>
                     </div>
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline" size="sm" className="h-9">
                         <Link href={DocumentoController.index.url()}>Ver mis documentos</Link>
                     </Button>
                 </div>
 
-                {/* Layout principal */}
-                <form onSubmit={onSubmit} className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
+                <form onSubmit={onSubmit} className="grid gap-6 xl:grid-cols-[1fr_480px] items-start">
 
-                    {/* Columna izquierda — campos */}
-                    <div className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Datos del oficio</CardTitle>
-                                <CardDescription>Completa la información principal del documento.</CardDescription>
+                    <div className="xl:sticky xl:top-8">
+                        <Card className="overflow-hidden border-t-2 border-t-[var(--primary)] shadow-sm flex flex-col h-[600px]">
+                            <CardHeader className=" border-b text-sm px-5 py-1">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2 text-xs font-semibold">
+                                        <Upload className="h-4 w-4 text-[var(--primary)]" />
+                                        {data.archivo ? 'Documento Listo' : 'Subir PDF'}
+                                    </CardTitle>
+                                    {data.archivo && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setData('archivo', null); }}
+                                            className="text-[10px] font-bold text-red-500 hover:underline tracking-tighter"
+                                        >
+                                            REEMPLAZAR
+                                        </button>
+                                    )}
+                                </div>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="numero_oficio">Número de oficio</Label>
+
+                            <CardContent className="p-0 flex-1 relative bg-[var(--card)]">
+                                {!pdfPreviewUrl ? (
+                                    <div
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={onDrop}
+                                        className="group flex h-full flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors hover:bg-[var(--sidebar)]/40"
+                                    >
+                                        <input
+                                            type="file" accept=".pdf"
+                                            disabled={processing}
+                                            onChange={(e) => handleFile(e.target.files?.[0] || null)}
+                                            className="absolute inset-0 cursor-pointer opacity-0"
+                                        />
+                                        <div className="rounded-full bg-[var(--sidebar)]/0 p-4 group-hover:bg-[var(--sidebar)]/80 transition-colors">
+                                            <Upload className="h-8 w-8 text-blue-400" />
+                                        </div>
+                                        <p className="mt-3 text-sm font-medium text-[var(--foreground)]">Arrastra el archivo aquí</p>
+                                        <p className="text-[11px] text-[var(--foreground)]/70 mt-1">Máximo 4 MB</p>
+                                    </div>
+                                ) : (
+                                    <iframe
+                                        title="Vista previa"
+                                        src={`${pdfPreviewUrl}#view=FitH&navpanes=0`}
+                                        className="h-full w-full border-none"
+                                    />
+                                )}
+                            </CardContent>
+
+
+
+                            {(shouldRenderProgress || errors.archivo) && (
+                                <div className="px-5 py-3 border-t bg-white">
+                                    {errors.archivo && (
+                                        <p className="text-[11px] font-medium text-red-600 mb-2 flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" /> {errors.archivo}
+                                        </p>
+                                    )}
+                                    {shouldRenderProgress && (
+                                        <div className="space-y-1">
+                                            <Progress value={displayProgress} className="h-1" />
+                                            <div className="flex justify-between text-[9px] uppercase font-bold text-[var(--secondary-foreground)]">
+                                                <span>{isServerProcessing ? 'Finalizando...' : 'Subiendo'}</span>
+                                                <span>{displayProgress}%</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </Card>
+
+
+                    </div>
+                    {/* COLUMNA IZQUIERDA: FORMULARIO */}
+                    <div className="space-y-6">
+                        <Card className="border-t-2 border-t-[var(--primary)] shadow-sm">
+                            <CardContent className="px-6 pb-6 pt-0 space-y-6">
+
+                                {/* Sección 1: Identificación */}
+                                <div className="grid gap-4 sm:grid-cols-2 ">
+
+                                    <FormField label="Número de oficio" icon={FileText} error={errors.numero_oficio} >
                                         <Input
-                                            id="numero_oficio"
                                             disabled={processing}
                                             value={data.numero_oficio}
                                             onChange={(e) => setData('numero_oficio', e.target.value)}
                                             placeholder="OF-2026-001"
+                                            className="h-9"
                                         />
-                                        <InputError message={errors.numero_oficio} />
-                                    </div>
+                                    </FormField>
 
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="fecha_oficio">
-                                            Fecha de oficio <span className="text-red-500">*</span>
-                                        </Label>
+                                    <FormField label="Fecha de oficio" required icon={CalendarDays} error={errors.fecha_oficio}>
                                         <Input
-                                            id="fecha_oficio"
                                             type="date"
                                             disabled={processing}
                                             value={data.fecha_oficio}
                                             onChange={(e) => setData('fecha_oficio', e.target.value)}
+                                            className="h-9"
                                         />
-                                        <InputError message={errors.fecha_oficio} />
-                                    </div>
+                                    </FormField>
 
-                                    <div className="space-y-1.5">
-                                        <Label>Remitente <span className="text-red-500">*</span></Label>
+                                    <FormField label="Asunto" required icon={FileText} error={errors.asunto} className="sm:col-span-2">
+                                        <Input
+                                            disabled={processing}
+                                            value={data.asunto}
+                                            onChange={(e) => setData('asunto', e.target.value)}
+                                            placeholder="Descripción del contenido"
+                                            className="h-9"
+                                        />
+                                    </FormField>
+                                </div>
+
+                                {/* Separador */}
+                                <div className="flex items-center gap-4 py-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--secondary-foreground)]">Clasificación</span>
+                                    <div className="h-[1px] w-full bg-slate-100" />
+                                </div>
+
+                                {/* Sección 2: Clasificación */}
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <FormField label="Remitente" required icon={User} error={errors.remitente_id}>
                                         <Select
                                             disabled={processing}
                                             value={String(data.remitente_id || '')}
-                                            onValueChange={(value) => setData('remitente_id', value)}
+                                            onValueChange={(v) => setData('remitente_id', v)}
                                         >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Selecciona remitente" />
-                                            </SelectTrigger>
+                                            <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                             <SelectContent>
-                                                {remitentes.map((remitente) => (
-                                                    <SelectItem key={remitente.id_remitente} value={String(remitente.id_remitente)}>
-                                                        {remitente.nombre}
-                                                    </SelectItem>
+                                                {remitentes.map((r) => (
+                                                    <SelectItem key={r.id_remitente} value={String(r.id_remitente)}>{r.nombre}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <InputError message={errors.remitente_id} />
-                                    </div>
+                                    </FormField>
 
-                                    <div className="space-y-1.5">
-                                        <Label>Tipo <span className="text-red-500">*</span></Label>
-                                        <Select disabled={processing} value={data.tipo} onValueChange={(value) => setData('tipo', value)}>
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Selecciona tipo" />
-                                            </SelectTrigger>
+                                    <FormField label="Tipo" required icon={Layers} error={errors.tipo}>
+                                        <Select
+                                            disabled={processing}
+                                            value={data.tipo}
+                                            onValueChange={(v) => setData('tipo', v)}
+                                        >
+                                            <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                                             <SelectContent>
-                                                {tipos.map((tipo) => (
-                                                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-                                                ))}
+                                                {tipos.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
-                                        <InputError message={errors.tipo} />
-                                    </div>
+                                    </FormField>
 
-                                    <div className="space-y-1.5 sm:col-span-2">
-                                        <Label htmlFor="palabra_clave">
-                                            Palabra clave <span className="text-red-500">*</span>
-                                        </Label>
+                                    <FormField label="Palabra clave" required icon={Tag} error={errors.palabra_clave} className="sm:col-span-2">
                                         <Input
-                                            id="palabra_clave"
                                             disabled={processing}
                                             value={data.palabra_clave}
                                             onChange={(e) => setData('palabra_clave', e.target.value)}
-                                            placeholder="Contratacion"
+                                            placeholder="Ej: Contratación, Presupuesto..."
+                                            className="h-9"
                                         />
-                                        <InputError message={errors.palabra_clave} />
-                                    </div>
+                                    </FormField>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Archivo</CardTitle>
-                                <CardDescription>Solo PDF, máximo 4 MB.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={onDrop}
-                                    className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center"
-                                >
-                                    <p className="text-sm text-muted-foreground">
-                                        Arrastra y suelta tu archivo aquí o selecciona desde tu equipo.
-                                    </p>
-                                    <Input
-                                        type="file"
-                                        accept=".pdf,application/pdf"
-                                        disabled={processing}
-                                        className="mt-3"
-                                        onChange={(e) => handleFile(e.target.files?.[0] || null)}
-                                    />
-                                    {data.archivo && (
-                                        <p className="mt-2 text-sm font-medium text-slate-700">{data.archivo.name}</p>
-                                    )}
-                                </div>
-                                <InputError message={errors.archivo} />
-
-                                {shouldRenderProgress && (
-                                    <div className="space-y-1.5">
-                                        <Progress value={displayProgress} />
-                                        <p className="text-xs text-muted-foreground">
-                                            {isServerProcessing
-                                                ? 'Archivo subido. Procesando documento...'
-                                                : `Subiendo: ${currentUploadPercentage}%`}
-                                        </p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <Button
-                            type="submit"
-                            disabled={processing}
-                            className="w-full bg-blue-600 text-white hover:bg-blue-700"
-                        >
-                            {processing ? 'Guardando...' : 'Guardar documento'}
-                        </Button>
+                        <div className="flex justify-end">
+                            <Button
+                                type="submit"
+                                disabled={processing || !data.archivo}
+                                className="w-full sm:w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                            >
+                                {processing ? 'Guardando...' : 'Guardar documento'}
+                            </Button>
+                        </div>
                     </div>
-
-                    {/* Columna derecha — preview */}
-                    <Card className="h-fit xl:sticky xl:top-6">
-                        <CardHeader>
-                            <CardTitle>Vista previa</CardTitle>
-                            <CardDescription>
-                                {pdfPreviewUrl
-                                    ? 'Vista local antes de guardar el oficio.'
-                                    : 'El PDF aparecerá aquí una vez que lo selecciones.'}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {pdfPreviewUrl ? (
-                                <div className="overflow-hidden rounded-lg border bg-white">
-                                    <iframe
-                                        title="Vista previa del PDF"
-                                        src={pdfPreviewUrl}
-                                        className="h-[600px] w-full"
-                                    />
-                                </div>
-                            ) : (
-                                <div className="flex h-[600px] items-center justify-center rounded-lg border border-dashed bg-muted/20">
-                                    <p className="text-sm text-muted-foreground">Sin archivo seleccionado</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
 
                 </form>
             </div>

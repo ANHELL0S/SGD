@@ -4,6 +4,7 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -39,7 +40,7 @@ class CreateNewUser implements CreatesNewUsers
             'apellido' => $input['apellido'],
             'cedula' => $input['cedula'],
             'email' => $input['email'],
-            'password' => $input['password'],
+            'password' => Hash::make($input['password']),
             'rol' => 'user',
             'estado' => 'pendiente',
             'area_id' => (int) $input['area_id'],

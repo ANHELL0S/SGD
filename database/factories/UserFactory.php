@@ -42,6 +42,7 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
             'rol' => 'user',
             'estado' => 'aprobado',
+            'habilitado' => true,
             'area_id' => $area->id_area,
         ];
     }

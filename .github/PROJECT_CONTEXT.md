@@ -107,7 +107,7 @@ Los componentes de Shadcn/ui deben residir en resources/js/components/ui/
     npx shadcn@latest add alert-dialog
 # Para alertas de actualizacion u otras
     npx shadcn@latest add alert
-# Para mensajes de exito
+# Para mensajes de exito, para cuando se edita y se elimina una accion
     npx shadcn@latest add sonner
 # Para el filtro por Fechas o uso de Calendario
     npx shadcn@latest add calendar

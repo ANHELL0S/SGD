@@ -23,10 +23,12 @@ export default defineConfig({
         }),
     ],
 
-    server: { // <--- AÑADE ESTO
-        host: true,
+    server: {
+        host: '0.0.0.0', // Esto permite conexiones externas
+        port: 5173,      // Puerto por defecto de Vite
+        strictPort: true,
         hmr: {
-            host: '172.16.13.133', // <-- Cambia XX por TU IP REAL
+            host: 'localhost',
         },
     },
 

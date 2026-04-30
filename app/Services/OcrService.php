@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Smalot\PdfParser\Parser as PdfParser;
 use thiagoalessio\TesseractOCR\TesseractOCR;
 
 class OcrService
@@ -50,6 +51,38 @@ class OcrService
 
     protected function extractFromPdf(string $absolutePath): string
     {
+        // Fast path: extract embedded text directly (digital PDFs, no OCR needed)
+        $text = $this->extractTextFromDigitalPdf($absolutePath);
+
+        if ($text !== '') {
+            return $text;
+        }
+
+        // Slow path: PDF is scanned — render pages and run Tesseract OCR
+        return $this->extractFromScannedPdf($absolutePath);
+    }
+
+    private function extractTextFromDigitalPdf(string $absolutePath): string
+    {
+        try {
+            $parser = new PdfParser;
+            $pdf = $parser->parseFile($absolutePath);
+            $text = trim($pdf->getText());
+
+            // Require a minimum amount of real text to avoid treating
+            // PDFs with only embedded fonts/artifacts as digital.
+            if (mb_strlen($text) < 20) {
+                return '';
+            }
+
+            return $text;
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    private function extractFromScannedPdf(string $absolutePath): string
+    {
         if (! extension_loaded('imagick')) {
             throw new RuntimeException('PDF OCR requires the Imagick PHP extension.');
         }
@@ -58,7 +91,7 @@ class OcrService
         File::ensureDirectoryExists($tempDirectory);
 
         $imagickClass = 'Imagick';
-        $imagick = new $imagickClass();
+        $imagick = new $imagickClass;
         $imagick->setResolution($this->pdfDpi, $this->pdfDpi);
         $imagick->readImage($absolutePath);
 

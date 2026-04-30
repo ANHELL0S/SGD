@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Movimiento;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -70,7 +71,20 @@ class HandleInertiaRequests extends Middleware
             'pendingMovimientosCount' => $user && $user->rol === 'user' && $user->area_id !== null
                 ? Movimiento::query()
                     ->where('a_area_id', $user->area_id)
-                    ->whereNull('fecha_recepcion')
+                    ->where(function (Builder $query) use ($user): void {
+                        $query->whereNull('destinatario_user_id')
+                            ->orWhere('destinatario_user_id', $user->id_user);
+                    })
+                    ->where(function (Builder $query): void {
+                        $query->whereNull('expediente_id')
+                            ->orWhereHas('expediente', fn (Builder $q) => $q->where('estado', 'abierto'));
+                    })
+                    ->whereDoesntHave('documento.documentoHilo', function (Builder $query) use ($user): void {
+                        $query->where('user_id', $user->id_user)
+                            ->whereNotNull('conversacion_cerrada_at');
+                    })
+                    ->whereDoesntHave('documentosGenerados')
+                    ->where('fecha_envio', '>=', now()->subDays(12))
                     ->count()
                 : null,
             'flash' => [

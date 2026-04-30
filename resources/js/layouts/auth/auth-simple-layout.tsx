@@ -9,28 +9,24 @@ export default function AuthSimpleLayout({
     description,
 }: AuthLayoutProps) {
     return (
-        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-            <div className="w-full max-w-sm">
-                <div className="flex flex-col gap-8">
-                    <div className="flex flex-col items-center gap-4">
-                        <Link
-                            href={home()}
-                            className="flex flex-col items-center gap-2 font-medium"
-                        >
-                            <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                                <AppLogoIcon className="size-9 fill-current text-[var(--foreground)] dark:text-white" />
-                            </div>
-                            <span className="sr-only">{title}</span>
-                        </Link>
+        <div className="flex min-h-svh items-center justify-center bg-gray-100 dark:bg-zinc-950 p-4">
+            <div className="w-full max-w-md">
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md dark:bg-zinc-900 dark:border-zinc-800">
 
-                        <div className="space-y-2 text-center">
-                            <h1 className="text-xl font-medium">{title}</h1>
-                            <p className="text-center text-sm text-muted-foreground">
-                                {description}
-                            </p>
+                    {/* Encabezado con logo a ancho completo */}
+                    <Link href={home()} className="block bg-blue-900 px-8 py-6">
+                        <AppLogoIcon className="mx-auto h-16 w-auto" />
+                    </Link>
+
+                    {/* Título y formulario */}
+                    <div className="px-8 py-7">
+                        <div className="mb-6 text-center">
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">{description}</p>
                         </div>
+                        {children}
                     </div>
-                    {children}
+
                 </div>
             </div>
         </div>

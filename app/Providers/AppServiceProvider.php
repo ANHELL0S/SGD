@@ -2,12 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Services\OcrService;
+use App\Support\RequestIpResolver;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Fortify\Fortify;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,6 +45,38 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        Event::listen(Login::class, function (Login $event): void {
+            if (! $event->user instanceof User) {
+                return;
+            }
+
+            $ipContext = RequestIpResolver::resolve(request());
+
+            Log::channel('auth')->info('Login exitoso', [
+                'user_id' => $event->user->id_user,
+                ...$ipContext,
+                'username' => request()?->input(Fortify::username()),
+                'guard' => $event->guard,
+            ]);
+        });
+
+        Event::listen(Registered::class, function (Registered $event): void {
+            $user = $event->user;
+
+            if (! $user instanceof User) {
+                return;
+            }
+
+            $ipContext = RequestIpResolver::resolve(request());
+
+            Log::channel('auth')->info('Registro exitoso', [
+                'user_id' => $user?->id_user,
+                ...$ipContext,
+                'username' => $user?->email,
+                'guard' => config('auth.defaults.guard'),
+            ]);
+        });
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

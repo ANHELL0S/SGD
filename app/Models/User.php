@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Concerns\AuditsCrudActivity;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,12 +12,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['nombre', 'apellido', 'cedula', 'email', 'password', 'rol', 'estado', 'area_id'])]
+#[Fillable(['nombre', 'apellido', 'cedula', 'email', 'password', 'rol', 'estado', 'habilitado', 'area_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use AuditsCrudActivity, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     protected $primaryKey = 'id_user'; // Crucial
 
@@ -28,7 +29,8 @@ class User extends Authenticatable
         'password',
         'rol',
         'estado',
-        'area_id'
+        'habilitado',
+        'area_id',
     ];
 
     /**
@@ -42,6 +44,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'habilitado' => 'boolean',
         ];
     }
 
@@ -49,6 +52,4 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Area::class, 'area_id', 'id_area');
     }
-
-
 }

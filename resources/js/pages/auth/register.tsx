@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
-import { store } from '@/routes/register';
+// import { store } from '@/routes/register';
 
 type AreaOption = {
     id_area: number;
@@ -22,6 +22,11 @@ export default function Register({ areas }: RegisterProps) {
     return (
         <>
             <Head title="Registro" />
+            {/* Registro deshabilitado por falta de store */}
+            <div className="p-6 text-center text-red-600 border border-red-300 rounded bg-red-50">
+                El registro de usuarios está deshabilitado temporalmente.
+            </div>
+            {/*
             <Form
                 action={store.url()}
                 method="post"
@@ -164,6 +169,7 @@ export default function Register({ areas }: RegisterProps) {
                     </>
                 )}
             </Form>
+            */}
         </>
     );
 }

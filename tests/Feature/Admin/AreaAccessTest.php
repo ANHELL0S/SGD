@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\Area;
+use App\Models\Documento;
+use App\Models\Remitente;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\delete;
 use function Pest\Laravel\from;
@@ -52,7 +55,77 @@ test('admin users can view the areas page with areas in inertia props', function
             ->component('admin/areas/index')
             ->has('areas.data')
             ->where('areas.data', fn ($areas) => $areas->contains(function (array $area) use ($archiveArea): bool {
-                return $area['id_area'] === $archiveArea->id_area && $area['nombre'] === 'ARCHIVO';
+                return $area['id_area'] === $archiveArea->id_area
+                    && $area['nombre'] === 'ARCHIVO'
+                    && $area['can_delete'] === true;
+            }))
+        );
+});
+
+test('admin areas are ordered from highest id to lowest id', function () {
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+    ]);
+
+    $firstArea = Area::create(['nombre' => 'ZZZ']);
+    $secondArea = Area::create(['nombre' => 'AAA']);
+    $thirdArea = Area::create(['nombre' => 'MMM']);
+
+    actingAs($admin);
+
+    get(route('admin.areas.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/areas/index')
+            ->where('areas.data', fn ($areas) => ($ids = $areas
+                ->pluck('id_area')
+                ->values())
+                ->all() === $ids->sortDesc()->values()->all()
+                && $ids->search($thirdArea->id_area) < $ids->search($secondArea->id_area)
+                && $ids->search($secondArea->id_area) < $ids->search($firstArea->id_area)));
+});
+
+test('areas with oficio dependencies are marked as not deletable in inertia props', function () {
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+    ]);
+
+    $area = Area::create([
+        'nombre' => 'DEPENDIENTE',
+    ]);
+
+    $usuario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $area->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'SUNAT',
+        'estado' => true,
+    ]);
+
+    Documento::create([
+        'numero_oficio' => 'OF-2026-998',
+        'fecha_oficio' => '2026-04-09',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'DEPENDENCIA-AREA',
+        'archivo' => 'documentos/test-998.pdf',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'recibido',
+    ]);
+
+    actingAs($admin);
+
+    get(route('admin.areas.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/areas/index')
+            ->where('areas.data', fn ($areas) => $areas->contains(function (array $current) use ($area): bool {
+                return $current['id_area'] === $area->id_area
+                    && $current['can_delete'] === false
+                    && $current['delete_block_reason'] !== null;
             }))
         );
 });
@@ -65,8 +138,8 @@ test('admin users can create areas using uppercase letters only', function () {
     actingAs($admin);
 
     post(route('admin.areas.store'), [
-            'nombre' => 'recursos humanos',
-        ])
+        'nombre' => 'recursos humanos',
+    ])
         ->assertRedirect(route('admin.areas.index'));
 
     expect(Area::query()->where('nombre', 'RECURSOS HUMANOS')->exists())->toBeTrue();
@@ -82,8 +155,8 @@ test('area names reject numbers and symbols', function () {
     from(route('admin.areas.index'));
 
     post(route('admin.areas.store'), [
-            'nombre' => 'AREA 1@',
-        ])
+        'nombre' => 'AREA 1@',
+    ])
         ->assertRedirect(route('admin.areas.index'))
         ->assertSessionHasErrors('nombre');
 });

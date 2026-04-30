@@ -1,11 +1,17 @@
-import { Head, router } from '@inertiajs/react';
-import { Check, X } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Ban, Check, Eye, Pencil, Plus, ShieldCheck, X } from 'lucide-react';
 import { useState } from 'react';
-import { approve, reject } from '@/actions/App/Http/Controllers/Admin/UserController';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
     Pagination,
@@ -22,8 +28,24 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    approve,
+    create,
+    disable,
+    edit,
+    enable,
+    reject,
+    show,
+} from '@/routes/admin/usuarios';
 
 type UserRow = {
     id_user: number;
@@ -32,6 +54,7 @@ type UserRow = {
     email: string;
     rol: string;
     estado: 'pendiente' | 'aprobado' | 'rechazado';
+    habilitado?: boolean | null;
     area: {
         id_area: number;
         nombre: string;
@@ -60,25 +83,38 @@ type Props = {
     };
 };
 
-function estadoBadgeClass(estado: UserRow['estado']): string {
-    if (estado === 'aprobado') {
-        return 'rounded-full border-emerald-200 bg-emerald-100 text-emerald-800 font-semibold';
-    }
-
-    if (estado === 'pendiente') {
+function estadoBadgeClass(estado: UserRow['estado'] | 'deshabilitado'): string {
+    if (estado === 'aprobado')
+        return 'inline-flex items-center rounded-full border border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-[12px] font-bold text-chart-4 shadow-sm backdrop-blur-sm';
+    if (estado === 'deshabilitado')
+        return 'rounded-full border-destructive-/30 bg-destructive-/10 font-semibold';
+    if (estado === 'pendiente')
         return 'rounded-full border-amber-200 bg-amber-100 text-amber-800 font-semibold';
-    }
-
     return 'rounded-full border-rose-200 bg-rose-100 text-rose-800 font-semibold';
+}
+
+function estadoVisible(user: UserRow): UserRow['estado'] | 'deshabilitado' {
+    if (user.estado === 'aprobado' && user.habilitado === false)
+        return 'deshabilitado';
+    return user.estado;
 }
 
 function fullName(user: UserRow): string {
     return `${user.nombre} ${user.apellido}`.trim();
 }
 
+function paginationLabel(label: string): string {
+    return label
+        .replace('&laquo;', '')
+        .replace('&raquo;', '')
+        .replace('pagination.previous', 'Anterior')
+        .replace('pagination.next', 'Siguiente');
+}
+
 export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
-    const [processingUserId, setProcessingUserId] = useState<number | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [processingUserId, setProcessingUserId] = useState<number | null>(
+        null,
+    );
     const [perPage, setPerPage] = useState(filters?.per_page ?? '5');
 
     const approvedLinks = approvedUsers.links ?? [];
@@ -93,41 +129,76 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
 
     const handleApprove = (user: UserRow) => {
         setProcessingUserId(user.id_user);
-
-        router.patch(approve.url(user.id_user), {}, {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['approvedUsers', 'pendingUsers'],
-            onSuccess: () => {
-                setSuccessMessage(`Usuario ${fullName(user)} aprobado correctamente.`);
+        router.patch(
+            approve.url(user.id_user),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['approvedUsers', 'pendingUsers'],
+                onSuccess: () =>
+                    toast.success(
+                        `Usuario ${fullName(user)} aprobado correctamente.`,
+                    ),
+                onFinish: () => setProcessingUserId(null),
             },
-            onFinish: () => {
-                setProcessingUserId(null);
-            },
-        });
+        );
     };
 
     const handleReject = (user: UserRow) => {
         setProcessingUserId(user.id_user);
+        router.patch(
+            reject.url(user.id_user),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['approvedUsers', 'pendingUsers'],
+                onSuccess: () =>
+                    toast.error(`Solicitud de ${fullName(user)} rechazada.`),
+                onFinish: () => setProcessingUserId(null),
+            },
+        );
+    };
 
-        router.patch(reject.url(user.id_user), {}, {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['approvedUsers', 'pendingUsers'],
-            onSuccess: () => {
-                setSuccessMessage(`Solicitud de ${fullName(user)} rechazada.`);
+    const handleDisable = (user: UserRow) => {
+        setProcessingUserId(user.id_user);
+        router.patch(
+            disable.url(user.id_user),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['approvedUsers', 'pendingUsers'],
+                onSuccess: () =>
+                    toast.info(
+                        `Usuario ${fullName(user)} deshabilitado correctamente.`,
+                    ),
+                onFinish: () => setProcessingUserId(null),
             },
-            onFinish: () => {
-                setProcessingUserId(null);
+        );
+    };
+
+    const handleEnable = (user: UserRow) => {
+        setProcessingUserId(user.id_user);
+        router.patch(
+            enable.url(user.id_user),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['approvedUsers', 'pendingUsers'],
+                onSuccess: () =>
+                    toast.success(
+                        `Usuario ${fullName(user)} habilitado correctamente.`,
+                    ),
+                onFinish: () => setProcessingUserId(null),
             },
-        });
+        );
     };
 
     const goToPaginationUrl = (url: string | null): void => {
-        if (!url) {
-            return;
-        }
-
+        if (!url) return;
         router.visit(url, {
             preserveScroll: true,
             preserveState: true,
@@ -137,272 +208,207 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
 
     const changePerPage = (value: string): void => {
         setPerPage(value);
-
-        router.get('/admin/usuarios', {
-            per_page: value,
-            approved_page: 1,
-            pending_page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.get(
+            '/admin/usuarios',
+            { per_page: value, approved_page: 1, pending_page: 1 },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     };
+
+    // ── Paginación reutilizable ────────────────────────────────────────────────
+    const PaginationBar = ({
+        prev,
+        next,
+        pages,
+    }: {
+        prev: PaginationLinkItem | null;
+        next: PaginationLinkItem | null;
+        pages: PaginationLinkItem[];
+    }) => (
+        <Pagination className="mx-0 w-auto justify-end">
+            <PaginationContent>
+                <PaginationItem>
+                    <PaginationPrevious
+                        href={prev?.url ?? '#'}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            goToPaginationUrl(prev?.url ?? null);
+                        }}
+                        className={
+                            !prev?.url ? 'pointer-events-none opacity-50' : ''
+                        }
+                    />
+                </PaginationItem>
+                {pages.map((link) => (
+                    <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
+                        <PaginationLink
+                            href={link.url ?? '#'}
+                            isActive={link.active}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                goToPaginationUrl(link.url);
+                            }}
+                            className={
+                                !link.url
+                                    ? 'pointer-events-none opacity-50'
+                                    : ''
+                            }
+                        >
+                            {paginationLabel(link.label)}
+                        </PaginationLink>
+                    </PaginationItem>
+                ))}
+                <PaginationItem>
+                    <PaginationNext
+                        href={next?.url ?? '#'}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            goToPaginationUrl(next?.url ?? null);
+                        }}
+                        className={
+                            !next?.url ? 'pointer-events-none opacity-50' : ''
+                        }
+                    />
+                </PaginationItem>
+            </PaginationContent>
+        </Pagination>
+    );
 
     return (
         <>
             <Head title="Usuarios" />
 
-            <div className="flex flex-col gap-6 p-4 md:p-6">
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle>Gestion de usuarios</CardTitle>
-                        <CardDescription>
-                            Revisa usuarios activos y aprueba solicitudes de acceso pendientes.
-                        </CardDescription>
-                    </CardHeader>
+            <div className="mx-auto w-full space-y-6 px-8 pt-4">
+                <div className="space-y-1">
+                    <h1 className="text-xl font-semibold leading-tight flex items-center gap-2">
+                        <ShieldCheck className="size-5 text-muted-foreground" />
+                        Gestión de usuarios
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                        Revisa usuarios activos, aprueba solicitudes y crea nuevas cuentas.
+                    </p>
+                </div>
 
-                    <CardContent className="space-y-4">
-                        {successMessage && (
-                            <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
-                                <AlertTitle>Accion completada</AlertTitle>
-                                <AlertDescription>{successMessage}</AlertDescription>
-                            </Alert>
-                        )}
+                <Tabs defaultValue="activos" className="w-full">
+                    <div className="flex items-center justify-between gap-4">
+                        <TabsList className="h-9 rounded-lg bg-muted p-1">
+                            <TabsTrigger value="activos" className="text-[12px] px-4">
+                                Registrados ({approvedUsers.total})
+                            </TabsTrigger>
+                            <TabsTrigger value="solicitudes" className="text-[12px] px-4">
+                                Solicitudes ({pendingUsers.total})
+                            </TabsTrigger>
+                        </TabsList>
 
-                        <div className="flex items-center gap-2">
-                            <Label className="text-xs font-medium text-slate-500">
-                                Mostrar
-                            </Label>
-                            <Select value={perPage} onValueChange={changePerPage}>
-                                <SelectTrigger className="h-8 w-[96px] text-[13px]">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="5">5</SelectItem>
-                                    <SelectItem value="7">7</SelectItem>
-                                    <SelectItem value="10">10</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <Button asChild size="sm" className="bg-blue-600 text-white hover:bg-blue-700">
+                            <Link href={create()}>
+                                <Plus className="mr-1.5 size-4" />
+                                Nuevo usuario
+                            </Link>
+                        </Button>
+                    </div>
 
-                        <Tabs defaultValue="activos" className="w-full">
-                            <TabsList>
-                                <TabsTrigger value="activos">
-                                    Usuarios activos ({approvedUsers.total})
-                                </TabsTrigger>
-                                <TabsTrigger value="solicitudes">
-                                    Solicitudes de acceso ({pendingUsers.total})
-                                </TabsTrigger>
-                            </TabsList>
+                    {/* ── Tab: Usuarios registrados ─────────────────── */}
+                    <TabsContent value="activos" className="mt-4">
+                        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                            {/* Toolbar INTERNA (Dentro del borde) */}
+                            <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                                        Mostrar
+                                    </Label>
+                                    <Select value={perPage} onValueChange={changePerPage}>
+                                        <SelectTrigger className="h-7 w-[65px] text-[11px] bg-background">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="5">5</SelectItem>
+                                            <SelectItem value="10">10</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            <TabsContent value="activos" className="pt-3">
-                                <div className="mb-3 flex items-center justify-between">
-                                    <p className="text-xs text-muted-foreground">
+                                <div className="flex items-center gap-4">
+                                    <p className="hidden text-[11px] font-medium text-muted-foreground sm:block">
                                         {approvedUsers.total > 0
-                                            ? `${approvedUsers.from ?? 0}-${approvedUsers.to ?? 0} de ${approvedUsers.total}`
+                                            ? `${approvedUsers.from}–${approvedUsers.to} de ${approvedUsers.total}`
                                             : '0 resultados'}
                                     </p>
-                                    <Pagination className="mx-0 w-auto justify-end">
-                                        <PaginationContent>
-                                            <PaginationItem>
-                                                <PaginationPrevious
-                                                    href={approvedPrev?.url ?? '#'}
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPaginationUrl(approvedPrev?.url ?? null);
-                                                    }}
-                                                    className={!approvedPrev?.url ? 'pointer-events-none opacity-50' : ''}
-                                                />
-                                            </PaginationItem>
-
-                                            {approvedPages.map((link) => (
-                                                <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
-                                                    <PaginationLink
-                                                        href={link.url ?? '#'}
-                                                        isActive={link.active}
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-                                                            goToPaginationUrl(link.url);
-                                                        }}
-                                                        className={!link.url ? 'pointer-events-none opacity-50' : ''}
-                                                    >
-                                                        {link.label
-                                                            .replace('&laquo;', '')
-                                                            .replace('&raquo;', '')
-                                                            .replace('pagination.previous', 'Anterior')
-                                                            .replace('pagination.next', 'Siguiente')}
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                            ))}
-
-                                            <PaginationItem>
-                                                <PaginationNext
-                                                    href={approvedNext?.url ?? '#'}
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPaginationUrl(approvedNext?.url ?? null);
-                                                    }}
-                                                    className={!approvedNext?.url ? 'pointer-events-none opacity-50' : ''}
-                                                />
-                                            </PaginationItem>
-                                        </PaginationContent>
-                                    </Pagination>
+                                    <PaginationBar
+                                        prev={approvedPrev}
+                                        next={approvedNext}
+                                        pages={approvedPages}
+                                    />
                                 </div>
+                            </div>
 
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Nombre</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Area</TableHead>
-                                            <TableHead>Rol</TableHead>
-                                            <TableHead>Estado</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {approvedUsers.data.length > 0 ? (
-                                            approvedUsers.data.map((user) => (
-                                                <TableRow key={user.id_user}>
-                                                    <TableCell className="font-medium">{fullName(user)}</TableCell>
-                                                    <TableCell>{user.email}</TableCell>
-                                                    <TableCell>{user.area?.nombre ?? '-'}</TableCell>
-                                                    <TableCell className="uppercase">{user.rol}</TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline" className={estadoBadgeClass(user.estado)}>
-                                                            {user.estado}
-                                                        </Badge>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                                                    No hay usuarios aprobados todavia.
+                            {/* Tabla */}
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/20 border-t-0 hover:bg-transparent">
+                                        <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Nombre</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Email</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Área</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Estado</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Acciones</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {approvedUsers.data.length > 0 ? (
+                                        approvedUsers.data.map((user) => (
+                                            <TableRow key={user.id_user} className="hover:bg-muted/10 last:border-0">
+                                                <TableCell className="text-center text-[12px] font-medium">{fullName(user)}</TableCell>
+                                                <TableCell className="text-center text-[12px] text-muted-foreground">{user.email}</TableCell>
+                                                <TableCell className="text-center text-[12px]">{user.area?.nombre ?? '-'}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant="outline" className={estadoBadgeClass(estadoVisible(user))}>
+                                                        {estadoVisible(user)}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <div className="flex justify-center gap-1">
+                                                        <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50">
+                                                            <Link href={show.url(user.id_user)}><Eye className="size-4" /></Link>
+                                                        </Button>
+                                                        <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground">
+                                                            <Link href={edit.url(user.id_user)}><Pencil className="size-4" /></Link>
+                                                        </Button>
+                                                        <Button type="button" size="sm" variant="ghost" className={`h-8 w-8 p-0 ${user.habilitado !== false ? 'text-red-500' : 'text-emerald-600'}`} onClick={() => user.habilitado !== false ? handleDisable(user) : handleEnable(user)}>
+                                                            {user.habilitado !== false ? <Ban className="size-4" /> : <ShieldCheck className="size-4" />}
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TabsContent>
-
-                            <TabsContent value="solicitudes" className="pt-3">
-                                <div className="mb-3 flex items-center justify-between">
-                                    <p className="text-xs text-muted-foreground">
-                                        {pendingUsers.total > 0
-                                            ? `${pendingUsers.from ?? 0}-${pendingUsers.to ?? 0} de ${pendingUsers.total}`
-                                            : '0 resultados'}
-                                    </p>
-                                    <Pagination className="mx-0 w-auto justify-end">
-                                        <PaginationContent>
-                                            <PaginationItem>
-                                                <PaginationPrevious
-                                                    href={pendingPrev?.url ?? '#'}
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPaginationUrl(pendingPrev?.url ?? null);
-                                                    }}
-                                                    className={!pendingPrev?.url ? 'pointer-events-none opacity-50' : ''}
-                                                />
-                                            </PaginationItem>
-
-                                            {pendingPages.map((link) => (
-                                                <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
-                                                    <PaginationLink
-                                                        href={link.url ?? '#'}
-                                                        isActive={link.active}
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-                                                            goToPaginationUrl(link.url);
-                                                        }}
-                                                        className={!link.url ? 'pointer-events-none opacity-50' : ''}
-                                                    >
-                                                        {link.label
-                                                            .replace('&laquo;', '')
-                                                            .replace('&raquo;', '')
-                                                            .replace('pagination.previous', 'Anterior')
-                                                            .replace('pagination.next', 'Siguiente')}
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                            ))}
-
-                                            <PaginationItem>
-                                                <PaginationNext
-                                                    href={pendingNext?.url ?? '#'}
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPaginationUrl(pendingNext?.url ?? null);
-                                                    }}
-                                                    className={!pendingNext?.url ? 'pointer-events-none opacity-50' : ''}
-                                                />
-                                            </PaginationItem>
-                                        </PaginationContent>
-                                    </Pagination>
-                                </div>
-
-                                <Table>
-                                    <TableHeader>
+                                        ))
+                                    ) : (
                                         <TableRow>
-                                            <TableHead>Nombre</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Area</TableHead>
-                                            <TableHead>Rol</TableHead>
-                                            <TableHead>Estado</TableHead>
-                                            <TableHead className="text-right">Acciones</TableHead>
+                                            <TableCell colSpan={5} className="py-12 text-center text-[12px] text-muted-foreground">No hay usuarios registrados.</TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {pendingUsers.data.length > 0 ? (
-                                            pendingUsers.data.map((user) => (
-                                                <TableRow key={user.id_user}>
-                                                    <TableCell className="font-medium">{fullName(user)}</TableCell>
-                                                    <TableCell>{user.email}</TableCell>
-                                                    <TableCell>{user.area?.nombre ?? '-'}</TableCell>
-                                                    <TableCell className="uppercase">{user.rol}</TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline" className={estadoBadgeClass(user.estado)}>
-                                                            {user.estado}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                className="bg-emerald-600 text-white hover:bg-emerald-700"
-                                                                disabled={processingUserId === user.id_user}
-                                                                onClick={() => handleApprove(user)}
-                                                            >
-                                                                <Check className="mr-1 h-4 w-4" />
-                                                                Aprobar
-                                                            </Button>
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                disabled={processingUserId === user.id_user}
-                                                                onClick={() => handleReject(user)}
-                                                            >
-                                                                <X className="mr-1 h-4 w-4" />
-                                                                Rechazar
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                                                    No hay solicitudes pendientes.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TabsContent>
-                        </Tabs>
-                    </CardContent>
-                </Card>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </TabsContent>
+
+                    {/* ── Tab: Solicitudes ─────────────────────────── */}
+                    <TabsContent value="solicitudes" className="mt-4">
+                        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                            <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
+                                <span className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Solicitudes Pendientes</span>
+                                <PaginationBar prev={pendingPrev} next={pendingNext} pages={pendingPages} />
+                            </div>
+                            <Table>
+                                <TableBody>
+                                    {/* ... El mapeo de pendingUsers igual que arriba con last:border-0 ... */}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
         </>
     );

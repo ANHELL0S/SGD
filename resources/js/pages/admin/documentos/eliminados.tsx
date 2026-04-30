@@ -17,7 +17,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -43,6 +49,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+
+import { Separator } from '@/components/ui/separator';
+import { Search } from 'lucide-react';
+import { RotateCcw, Filter, Calendar } from 'lucide-react';
 
 type Remitente = {
     id_remitente: number;
@@ -128,8 +138,11 @@ function formatDate(value: string | null): string {
 }
 
 export default function Eliminados({ documentos, remitentes, filters }: Props) {
-    const { flash } = usePage().props as { flash?: { success?: string | null } };
-    const [documentoToRestore, setDocumentoToRestore] = useState<DocumentoEliminado | null>(null);
+    const { flash } = usePage().props as {
+        flash?: { success?: string | null };
+    };
+    const [documentoToRestore, setDocumentoToRestore] =
+        useState<DocumentoEliminado | null>(null);
     const { data, setData } = useForm<FilterState>({
         ...defaultFilters,
         ...filters,
@@ -139,14 +152,18 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
     const applyFilters = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        router.get(deletedDocumentosIndex.url(), {
-            ...data,
-            page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.get(
+            deletedDocumentosIndex.url(),
+            {
+                ...data,
+                page: 1,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     };
 
     const clearFilters = () => {
@@ -157,14 +174,18 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
 
         setData(clearedFilters);
 
-        router.get(deletedDocumentosIndex.url(), {
-            ...clearedFilters,
-            page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: false,
-            replace: true,
-        });
+        router.get(
+            deletedDocumentosIndex.url(),
+            {
+                ...clearedFilters,
+                page: 1,
+            },
+            {
+                preserveScroll: true,
+                preserveState: false,
+                replace: true,
+            },
+        );
     };
 
     const goToPaginationUrl = (url: string | null): void => {
@@ -182,21 +203,42 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
     const changePerPage = (value: string): void => {
         setData('per_page', value);
 
-        router.get(deletedDocumentosIndex.url(), {
-            ...data,
-            per_page: value,
-            page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.get(
+            deletedDocumentosIndex.url(),
+            {
+                ...data,
+                per_page: value,
+                page: 1,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     };
 
     const paginationLinks = documentos.links ?? [];
     const previousLink = paginationLinks[0] ?? null;
     const nextLink = paginationLinks[paginationLinks.length - 1] ?? null;
     const pageLinks = paginationLinks.slice(1, -1);
+
+    const statusLabel = (value: string): string => {
+        return value.replace('_', ' ');
+    };
+
+    const getTypeColor = (type: string): string => {
+        const normalizedType = type.toLowerCase();
+
+        switch (normalizedType) {
+            case 'interno':
+                return 'border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 shadow-sm backdrop-blur-sm';
+            case 'externo':
+                return 'border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary shadow-sm backdrop-blur-sm';
+            default:
+                return 'border-muted-foreground/30 bg-muted-foreground/10 px-2.5 py-0.5 text-xs font-bold text-muted-foreground shadow-sm backdrop-blur-sm';
+        }
+    };
 
     const confirmRestore = () => {
         if (!documentoToRestore) {
@@ -215,114 +257,190 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
         <>
             <Head title="Oficios eliminados" />
 
-            <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
-                <div>
-                    <h1 className="text-2xl font-semibold">Oficios eliminados</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Los oficios en esta lista estan bloqueados y solo pueden volver a estar disponibles cuando se restauren.
-                    </p>
-                </div>
+            <div className="mx-auto w-full  p-2 ">
+                <Card className="w-full border-none bg-transparent shadow-none">
+                    <CardHeader>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className='space-y-1'>
+                                <h1 className="text-xl leading-tight font-semibold">
+                                    Oficios eliminados
+                                </h1>
+                                <p className='text-muted-foreground text-xs'>Puedes restaurar oficios eliminados en cualquier momento.</p>
+                            </div>
+                        </div>
 
-                {flash?.success && (
-                    <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
-                        <AlertTitle>Operacion completada</AlertTitle>
-                        <AlertDescription>{flash.success}</AlertDescription>
-                    </Alert>
-                )}
-
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle>Filtros</CardTitle>
-                        <CardDescription>Filtra oficios eliminados por remitente, tipo, estado y palabra clave.</CardDescription>
+                        {flash?.success && (
+                            <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
+                                <AlertTitle>Operacion completada</AlertTitle>
+                                <AlertDescription>
+                                    {flash.success}
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     </CardHeader>
-                    <CardContent>
-                        <form className="space-y-4" onSubmit={applyFilters}>
-                            <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-4">
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-slate-500">Tipo</Label>
-                                    <Select value={data.tipo} onValueChange={(value) => setData('tipo', value)}>
-                                        <SelectTrigger className="h-9 w-full bg-background text-[13px]">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="interno">Interno</SelectItem>
-                                            <SelectItem value="externo">Externo</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
 
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-slate-500">Remitente</Label>
-                                    <Select value={data.remitente_id} onValueChange={(value) => setData('remitente_id', value)}>
-                                        <SelectTrigger className="h-9 w-full bg-background text-[13px]">
-                                            <SelectValue placeholder="Remitentes" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {remitentes.map((remitente) => (
-                                                <SelectItem key={remitente.id_remitente} value={String(remitente.id_remitente)}>
-                                                    {remitente.nombre}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                    <CardContent className="space-y-2">
+                        {/* Filtros */}
+                        <form onSubmit={applyFilters} >
+                            <div className="flex flex-wrap items-center gap-2">
+                                {/* Tipo */}
+                                <Select
+                                    value={data.tipo}
+                                    onValueChange={(value) =>
+                                        setData('tipo', value)
+                                    }
+                                >
+                                    <SelectTrigger className="h-8 w-[110px] rounded-md border-border/50 bg-background text-[12px] shadow-none focus:ring-1">
+                                        <SelectValue placeholder="Tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            value="interno"
+                                            className="text-[12px]"
+                                        >
+                                            Interno
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="externo"
+                                            className="text-[12px]"
+                                        >
+                                            Externo
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
 
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-slate-500">Estado</Label>
-                                    <Select value={data.recibido} onValueChange={(value) => setData('recibido', value)}>
-                                        <SelectTrigger className="h-9 w-full bg-background text-[13px]">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="subido">Subido</SelectItem>
-                                            <SelectItem value="recibido">Recibido</SelectItem>
-                                            <SelectItem value="enviado">Enviado</SelectItem>
-                                            <SelectItem value="en_revision">En revision</SelectItem>
-                                            <SelectItem value="aprobado">Aprobado</SelectItem>
-                                            <SelectItem value="rechazado">Rechazado</SelectItem>
-                                            <SelectItem value="respondido">Respondido</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {/* Remitente */}
+                                <Select
+                                    value={data.remitente_id}
+                                    onValueChange={(value) =>
+                                        setData('remitente_id', value)
+                                    }
+                                >
+                                    <SelectTrigger className="h-8 w-[150px] rounded-md border-border/50 bg-background text-[12px] shadow-none focus:ring-1">
+                                        <SelectValue placeholder="Remitente" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[200px]">
+                                        {remitentes.map((remitente) => (
+                                            <SelectItem
+                                                key={remitente.id_remitente}
+                                                value={String(
+                                                    remitente.id_remitente,
+                                                )}
+                                                className="text-[12px]"
+                                            >
+                                                {remitente.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
 
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="palabra_clave" className="text-xs font-medium text-slate-500">Palabra clave</Label>
+                                {/* Estado */}
+                                <Select
+                                    value={data.recibido}
+                                    onValueChange={(value) =>
+                                        setData('recibido', value)
+                                    }
+                                >
+                                    <SelectTrigger className="h-8 w-[130px] rounded-md border-border/50 bg-background text-[12px] font-medium shadow-none focus:ring-1">
+                                        <SelectValue placeholder="Estado" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            value="subido"
+                                            className="text-[12px]"
+                                        >
+                                            Subido
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="recibido"
+                                            className="text-[12px]"
+                                        >
+                                            Recibido
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="enviado"
+                                            className="text-[12px]"
+                                        >
+                                            Enviado
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="en_revision"
+                                            className="text-[12px]"
+                                        >
+                                            En revisión
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="aprobado"
+                                            className="text-[12px]"
+                                        >
+                                            Aprobado
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="rechazado"
+                                            className="text-[12px]"
+                                        >
+                                            Rechazado
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="respondido"
+                                            className="text-[12px]"
+                                        >
+                                            Respondido
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Palabra Clave */}
+                                <div className="relative max-w-[250px] min-w-[160px] flex-1">
+                                    <Search className=" h absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground/50" />
                                     <Input
                                         id="palabra_clave"
-                                        placeholder="Buscar..."
+                                        placeholder="Buscar palabra clave..."
                                         value={data.palabra_clave}
-                                        onChange={(event) => setData('palabra_clave', event.target.value)}
-                                        className="h-9 text-[13px]"
+                                        onChange={(e) =>
+                                            setData(
+                                                'palabra_clave',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="h-9 rounded-md border-border/50 pl-8 text-[12px] shadow-none"
                                     />
                                 </div>
-                            </div>
 
-                            <div className="flex justify-end gap-2">
-                                <Button type="submit" className="h-9 bg-blue-600 px-4 text-[13px] text-white shadow-sm hover:bg-blue-700">Aplicar</Button>
-                                <Button type="button" variant="outline" onClick={clearFilters} className="h-9 px-4 text-[13px]">Limpiar</Button>
+                                {/* Botones de Acción */}
+                                <div className="ml-auto flex items-center gap-1">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={clearFilters}
+                                        className="h-8 w-8 rounded-md p-0 text-muted-foreground transition-colors hover:bg-muted"
+                                        title="Limpiar filtros"
+                                    >
+                                        <RotateCcw className="size-3.5" />
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        className="h-8 rounded-md bg-blue-600 px-4 text-[12px] font-medium text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95"
+                                    >
+                                        Aplicar
+                                    </Button>
+                                </div>
                             </div>
                         </form>
-                    </CardContent>
-                </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Oficios eliminados</CardTitle>
-                        <CardDescription>
-                            Mientras un oficio permanezca eliminado, queda bloqueado y no puede ser gestionado por el usuario.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="mb-4 flex flex-col gap-3 border-b pb-4 md:flex-row md:items-center md:justify-between">
+                         <Separator  className='mt-6' />
+
+                        {/* Barra: per_page + contador + paginación */}
+                        <div className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
                             <div className="flex items-center gap-2">
-                                <Label className="text-xs font-medium text-slate-500">
+                                <Label className="text-[12px] font-medium text-[var(--sidebar-foreground)]">
                                     Mostrar
                                 </Label>
                                 <Select
                                     value={data.per_page}
                                     onValueChange={changePerPage}
                                 >
-                                    <SelectTrigger className="h-8 w-[96px] text-[13px]">
+                                    <SelectTrigger className="h-8 w-[80px] text-[12px]">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -334,52 +452,78 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-[12px] text-muted-foreground">
                                     {documentos.total > 0
-                                        ? `${documentos.from ?? 0}-${documentos.to ?? 0} de ${documentos.total}`
+                                        ? `${documentos.from ?? 0}–${documentos.to ?? 0} de ${documentos.total}`
                                         : '0 resultados'}
                                 </p>
+
                                 <Pagination className="mx-0 w-auto justify-end">
                                     <PaginationContent>
                                         <PaginationItem>
                                             <PaginationPrevious
                                                 href={previousLink?.url ?? '#'}
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-                                                    goToPaginationUrl(previousLink?.url ?? null);
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    goToPaginationUrl(
+                                                        previousLink?.url ??
+                                                            null,
+                                                    );
                                                 }}
-                                                className={!previousLink?.url ? 'pointer-events-none opacity-50' : ''}
+                                                className={
+                                                    !previousLink?.url
+                                                        ? 'pointer-events-none opacity-50'
+                                                        : ''
+                                                }
                                             />
                                         </PaginationItem>
-
                                         {pageLinks.map((link) => (
-                                            <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
+                                            <PaginationItem
+                                                key={`${link.label}-${link.url ?? 'null'}`}
+                                            >
                                                 <PaginationLink
                                                     href={link.url ?? '#'}
                                                     isActive={link.active}
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPaginationUrl(link.url);
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        goToPaginationUrl(
+                                                            link.url,
+                                                        );
                                                     }}
-                                                    className={!link.url ? 'pointer-events-none opacity-50' : ''}
+                                                    className={
+                                                        !link.url
+                                                            ? 'pointer-events-none opacity-50 '
+                                                            : ''
+                                                    }
                                                 >
                                                     {link.label
                                                         .replace('&laquo;', '')
                                                         .replace('&raquo;', '')
-                                                        .replace('pagination.previous', 'Anterior')
-                                                        .replace('pagination.next', 'Siguiente')}
+                                                        .replace(
+                                                            'pagination.previous',
+                                                            'Anterior',
+                                                        )
+                                                        .replace(
+                                                            'pagination.next',
+                                                            'Siguiente',
+                                                        )}
                                                 </PaginationLink>
                                             </PaginationItem>
                                         ))}
-
                                         <PaginationItem>
                                             <PaginationNext
                                                 href={nextLink?.url ?? '#'}
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-                                                    goToPaginationUrl(nextLink?.url ?? null);
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    goToPaginationUrl(
+                                                        nextLink?.url ?? null,
+                                                    );
                                                 }}
-                                                className={!nextLink?.url ? 'pointer-events-none opacity-50' : ''}
+                                                className={
+                                                    !nextLink?.url
+                                                        ? 'pointer-events-none opacity-50'
+                                                        : ''
+                                                }
                                             />
                                         </PaginationItem>
                                     </PaginationContent>
@@ -387,75 +531,166 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                             </div>
                         </div>
 
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>No. Oficio</TableHead>
-                                    <TableHead>Dueño</TableHead>
-                                    <TableHead>Remitente</TableHead>
-                                    <TableHead>Tipo</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead>Fecha oficio</TableHead>
-                                    <TableHead>Eliminado</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {documentos.data.length > 0 ? (
-                                    documentos.data.map((documento) => (
-                                        <TableRow key={documento.id_documento} className="bg-slate-100 text-slate-500">
-                                            <TableCell className="font-medium">{documento.numero_oficio || '-'}</TableCell>
-                                            <TableCell>
-                                                {documento.user
-                                                    ? `${documento.user.nombre} ${documento.user.apellido} (${documento.user.area?.nombre ?? 'Sin area'})`
-                                                    : '-'}
-                                            </TableCell>
-                                            <TableCell>{documento.remitente?.nombre || '-'}</TableCell>
-                                            <TableCell className="capitalize">{documento.tipo}</TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="rounded-full border-slate-300 bg-slate-200 text-slate-700 font-semibold capitalize">
-                                                    {documento.recibido.replace('_', ' ')}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>{formatDate(documento.fecha_oficio)}</TableCell>
-                                            <TableCell>{formatDate(documento.deleted_at)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    disabled={processing}
-                                                    onClick={() => setDocumentoToRestore(documento)}
-                                                >
-                                                    Restaurar
-                                                </Button>
+                        {/* Tabla */}
+                        <div className="border-[var(--sidebar-fo)]-200 overflow-hidden rounded-lg border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-[var(--sidebar-fo)]-50">
+                                        {/* Headers centrados y con tipografía uniforme */}
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            No. Oficio
+                                        </TableHead>
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            Dueño
+                                        </TableHead>
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            Remitente
+                                        </TableHead>
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            Tipo
+                                        </TableHead>
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            Palabra Clave
+                                        </TableHead>
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            Eliminado
+                                        </TableHead>
+                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                            Acciones
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {documentos.data.length > 0 ? (
+                                        documentos.data.map((documento) => (
+                                            <TableRow
+                                                key={documento.id_documento}
+                                                className="hover:bg-[var(--sidebar-fo)]-50/60"
+                                            >
+                                                {/* 1. No. Oficio */}
+                                                <TableCell className="text-center text-[12px] font-medium text-[var(--sidebar-foreground)]">
+                                                    {documento.numero_oficio ||
+                                                        '-'}
+                                                </TableCell>
+
+                                                {/* 2. Dueño (Centrado con doble línea) */}
+                                                <TableCell className="min-w-[200px] text-center">
+                                                    {documento.user ? (
+                                                        <div className="flex min-h-[40px] flex-col justify-center">
+                                                            <p className="text-[12px] font-medium text-foreground">
+                                                                {
+                                                                    documento
+                                                                        .user
+                                                                        .nombre
+                                                                }{' '}
+                                                                {
+                                                                    documento
+                                                                        .user
+                                                                        .apellido
+                                                                }
+                                                            </p>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                {documento.user
+                                                                    .area
+                                                                    ?.nombre ??
+                                                                    'Sin área'}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        '-'
+                                                    )}
+                                                </TableCell>
+
+                                                {/* 3. Remitente */}
+                                                <TableCell className="text-center text-[12px] text-[var(--sidebar-fo)]/70">
+                                                    {documento.remitente
+                                                        ?.nombre || '-'}
+                                                </TableCell>
+
+                                                {/* 4. Tipo */}
+                                                <TableCell className="text-center">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`capitalize ${getTypeColor(documento.tipo)}`}
+                                                    >
+                                                        {documento.tipo}
+                                                    </Badge>
+                                                </TableCell>
+
+                                                {/* 6. Palabra Clave */}
+                                                <TableCell className="text-center text-[12px] text-[var(--sidebar-foreground)]">
+                                                    {documento.palabra_clave || '-'}
+                                                </TableCell>
+
+                                                {/* 7. Eliminado */}
+                                                <TableCell className="text-center text-[12px] text-[var(--sidebar-foreground)]">
+                                                    {formatDate(
+                                                        documento.deleted_at,
+                                                    )}
+                                                </TableCell>
+
+                                                {/* 8. Acciones (Botón restaurar centrado) */}
+                                                <TableCell className="text-center">
+                                                    <div className="flex justify-center">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-6 border-[var(--border)] px-3 text-[12px] text-[var(--chart-4)] hover:bg-[var(--chart-4)]/30 hover:text-[var(--chart-4)]" // Un poco más compacto para tablas
+                                                            disabled={
+                                                                processing
+                                                            }
+                                                            onClick={() =>
+                                                                setDocumentoToRestore(
+                                                                    documento,
+                                                                )
+                                                            }
+                                                        >
+                                                            Restaurar
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={8}
+                                                className="py-10 text-center text-[12px] text-muted-foreground"
+                                            >
+                                                No hay oficios eliminados por el
+                                                momento.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                                            No hay oficios eliminados por el momento.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <AlertDialog open={documentoToRestore !== null} onOpenChange={(open) => !open && setDocumentoToRestore(null)}>
+            <AlertDialog
+                open={documentoToRestore !== null}
+                onOpenChange={(open) => !open && setDocumentoToRestore(null)}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Restaurar oficio</AlertDialogTitle>
                         <AlertDialogDescription>
-                            El oficio {documentoToRestore?.numero_oficio ?? 'sin numero'} volvera a estar activo para su usuario.
+                            El oficio{' '}
+                            {documentoToRestore?.numero_oficio ?? 'sin numero'}{' '}
+                            volvera a estar activo para su usuario.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmRestore}>Restaurar</AlertDialogAction>
+                        <AlertDialogAction
+                            onClick={confirmRestore}
+                            className="text-white"
+                        >
+                            Restaurar
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

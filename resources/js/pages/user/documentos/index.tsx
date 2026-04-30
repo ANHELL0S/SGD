@@ -1,13 +1,23 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Search } from 'lucide-react';
+import { RotateCcw, Filter } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parse } from 'date-fns';
+import { es } from 'date-fns/locale'; // Opcional: para fechas en español
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+
 import {
     Pagination,
     PaginationContent,
@@ -23,8 +33,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import DataTable from '@/pages/user/documentos/data-table';
-import type { DocumentoListado } from '@/pages/user/documentos/data-table';
+import DataTable from './data-table';
+import type { DocumentoListado } from './data-table';
 
 type Remitente = {
     id_remitente: number;
@@ -77,29 +87,56 @@ const defaultFilters: FilterState = {
 };
 
 export default function Index({ documentos, remitentes, filters }: Props) {
+    const [openDesde, setOpenDesde] = useState<boolean>(false);
+    const [openHasta, setOpenHasta] = useState<boolean>(false);
     const { auth } = usePage().props as {
-        auth?: { user?: { id_user?: number; rol?: string } | null };
+        auth?: {
+            user?: {
+                id_user?: number;
+                rol?: string;
+                area_id?: number | null;
+            } | null;
+        };
         flash?: { success?: string | null };
     };
 
     const isAdmin = auth?.user?.rol === 'admin';
     const currentUserId = auth?.user?.id_user ?? null;
+    const currentUserAreaId = auth?.user?.area_id ?? null;
     const { data, setData } = useForm<FilterState>({
         ...defaultFilters,
         ...filters,
     });
 
+    const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleOcrBusqueda = (value: string) => {
+        setData('texto_ocr', value);
+        if (ocrTimer.current) clearTimeout(ocrTimer.current);
+        ocrTimer.current = setTimeout(() => {
+            router.get(
+                DocumentoController.index.url(),
+                { ...data, texto_ocr: value, page: 1 },
+                { preserveScroll: true, preserveState: true, replace: true },
+            );
+        }, 1500);
+    };
+
     const applyFilters = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        router.get(DocumentoController.index.url(), {
-            ...data,
-            page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-        });
+        router.get(
+            DocumentoController.index.url(),
+            {
+                ...data,
+                page: 1,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
     };
 
     const clearFilters = () => {
@@ -110,14 +147,18 @@ export default function Index({ documentos, remitentes, filters }: Props) {
 
         setData(clearedFilters);
 
-        router.get(DocumentoController.index.url(), {
-            ...clearedFilters,
-            page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: false,
-            replace: true,
-        });
+        router.get(
+            DocumentoController.index.url(),
+            {
+                ...clearedFilters,
+                page: 1,
+            },
+            {
+                preserveScroll: true,
+                preserveState: false,
+                replace: true,
+            },
+        );
     };
 
     const goToPaginationUrl = (url: string | null): void => {
@@ -135,14 +176,24 @@ export default function Index({ documentos, remitentes, filters }: Props) {
     const changePerPage = (value: string): void => {
         setData('per_page', value);
 
-        router.get(DocumentoController.index.url(), {
-            ...data,
-            per_page: value,
-            page: 1,
-        }, {
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
+        router.get(
+            DocumentoController.index.url(),
+            {
+                ...data,
+                per_page: value,
+                page: 1,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
+    };
+
+    const refreshDocumentos = (): void => {
+        router.reload({
+            only: ['documentos', 'filters', 'remitentes'],
         });
     };
 
@@ -157,231 +208,376 @@ export default function Index({ documentos, remitentes, filters }: Props) {
                 title={isAdmin ? 'Documentos del sistema' : 'Mis documentos'}
             />
 
-            <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-semibold">
-                            {isAdmin
-                                ? 'Documentos del sistema'
-                                : 'Mis documentos'}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {isAdmin
-                                ? 'Listado global de documentos con su respectivo dueño.'
-                                : 'Historial de documentos que has subido al sistema.'}
-                        </p>
-                    </div>
-                    {!isAdmin && (
-                        <Button asChild>
-                            <Link href={DocumentoController.create.url()}>
-                                Nuevo documento
-                            </Link>
-                        </Button>
-                    )}
-                </div>
-
-                <Card className='border-none'>
+            <div className="mx-auto w-full space-y-6 p-4 md:p-2">
+                <Card className="border-none bg-transparent shadow-none">
                     <CardHeader>
-                        <form onSubmit={applyFilters} className="space-y-3">
-                            <div className="min-w-0 space-y-1.5">
-                                <Label
-                                    htmlFor="texto_ocr"
-                                    className="text-xs font-medium text-slate-500"
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h1 className="text-xl font-semibold">
+                                    {isAdmin
+                                        ? 'Documentos del sistema'
+                                        : 'Mis documentos'}
+                                </h1>
+                                <p className="text-sm text-xs text-muted-foreground">
+                                    {isAdmin
+                                        ? 'Listado global de documentos con su respectivo dueño.'
+                                        : 'Historial de documentos que has subido al sistema.'}
+                                </p>
+                            </div>
+                            {!isAdmin && (
+                                <Button
+                                    asChild
+                                    className="w-full text-white sm:w-auto h-8 bg-primary hover:bg-primary/90 active:scale-95"
                                 >
-                                    Texto dentro del PDF
-                                </Label>
+                                    <Link
+                                        href={DocumentoController.create.url()}
+                                    >
+                                        <span className="text-xl">+</span> Nuevo documento
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
+
+                        <form
+                            onSubmit={applyFilters}
+                            className="mt-6 space-y-4"
+                        >
+                            {/* Buscador Principal */}
+                            <div className="group relative">
+                                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-primary transition-colors group-focus-within:text-blue-500" />
                                 <Input
                                     id="texto_ocr"
-                                    placeholder="Buscar dentro del documento..."
+                                    placeholder="Buscar por contenido OCR..."
                                     value={data.texto_ocr}
-                                    onChange={(event) =>
-                                        setData('texto_ocr', event.target.value)
-                                    }
-                                    className="h-9 text-[13px]"
+                                    onChange={(e) => handleOcrBusqueda(e.target.value)}
+                                    className="h-9 rounded-lg border-border/50 bg-background pl-10 text-[13px] shadow-sm focus-visible:ring-1"
                                 />
                             </div>
 
-                                   <div className="flex flex-wrap items-end gap-3">
-                                        <div className="min-w-[130px] flex-1">
-                                            <Label className="text-xs font-medium text-slate-500 ">Tipo</Label>
-                                            <Select value={data.tipo} onValueChange={(value) => setData('tipo', value)}>
-                                                <SelectTrigger className="h-9 w-full bg-background text-[13px]">
-                                                    <SelectValue placeholder="Todos" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="interno">Interno</SelectItem>
-                                                    <SelectItem value="externo">Externo</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                            {/* Fila de Filtros Compacta */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Select
+                                        value={data.tipo}
+                                        onValueChange={(v) =>
+                                            setData('tipo', v)
+                                        }
+                                    >
+                                        <SelectTrigger className="h-8 w-[110px] rounded-md border-border/50 bg-background text-[12px]">
+                                            <SelectValue placeholder="Tipo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="interno">
+                                                Interno
+                                            </SelectItem>
+                                            <SelectItem value="externo">
+                                                Externo
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
 
-                                        <div className="min-w-[150px] flex-1 ">
-                                            <Label className="text-xs font-medium text-slate-500">Remitente</Label>
-                                            <Select value={data.remitente_id} onValueChange={(value) => setData('remitente_id', value)}>
-                                                <SelectTrigger className="h-9 w-full bg-background text-[13px] ">
-                                                    <SelectValue placeholder="Remitentes" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {remitentes.map((remitente) => (
-                                                        <SelectItem key={remitente.id_remitente} value={String(remitente.id_remitente)}>
-                                                            {remitente.nombre}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                    <Select
+                                        value={data.remitente_id}
+                                        onValueChange={(v) =>
+                                            setData('remitente_id', v)
+                                        }
+                                    >
+                                        <SelectTrigger className="h-8 w-[140px] rounded-md border-border/50 bg-background text-[12px]">
+                                            <SelectValue placeholder="Remitente" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {remitentes.map((r) => (
+                                                <SelectItem
+                                                    key={r.id_remitente}
+                                                    value={String(
+                                                        r.id_remitente,
+                                                    )}
+                                                >
+                                                    {r.nombre}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                                        <div className="min-w-[150px] flex-1 space-y-1.5">
-                                            <Label htmlFor="palabra_clave" className="text-xs font-medium text-slate-500">
-                                                Palabra clave
-                                            </Label>
-                                            <Input
-                                                id="palabra_clave"
-                                                placeholder="Buscar..."
-                                                value={data.palabra_clave}
-                                                onChange={(e) => setData('palabra_clave', e.target.value)}
-                                                className="h-9 text-[13px]"
-                                            />
-                                        </div>
+                                <Input
+                                    id="palabra_clave"
+                                    placeholder="Palabra clave..."
+                                    value={data.palabra_clave}
+                                    onChange={(e) =>
+                                        setData('palabra_clave', e.target.value)
+                                    }
+                                    className="h-8 w-[140px] rounded-md border-border/50 bg-background text-[12px]"
+                                />
 
-                                        <div className="min-w-[140px] flex-1 space-y-1.5">
-                                            <Label htmlFor="fecha_desde" className="text-xs font-medium text-slate-500">
-                                                Desde
-                                            </Label>
-                                            <Input
-                                                id="fecha_desde"
-                                                type="date"
-                                                value={data.fecha_desde}
-                                                onChange={(e) => setData('fecha_desde', e.target.value)}
-                                                className="h-9 text-[13px]"
-                                            />
-                                        </div>
-
-                                        <div className="min-w-[140px] flex-1 space-y-1.5">
-                                            <Label htmlFor="fecha_hasta" className="text-xs font-medium text-slate-500">
-                                                Hasta
-                                            </Label>
-                                            <Input
-                                                id="fecha_hasta"
-                                                type="date"
-                                                value={data.fecha_hasta}
-                                                onChange={(e) => setData('fecha_hasta', e.target.value)}
-                                                className="h-9 text-[13px]"
-                                            />
-                                        </div>
-
-                                        <div className="flex shrink-0 gap-2">
+                                {/* Rango de Fechas con Popover */}
+                                {/* Contenedor con ancho fijo y sin gap para control total */}
+                                <div className="flex h-8 w-[280px] items-center rounded-md border border-input bg-background shadow-xs">
+                                    {/* Fecha Desde */}
+                                    <Popover
+                                        open={openDesde}
+                                        onOpenChange={setOpenDesde}
+                                    >
+                                        <PopoverTrigger asChild>
                                             <Button
-                                                type="submit"
-                                                className="h-9 bg-blue-600 px-5 text-[13px] font-medium text-white shadow-sm hover:bg-blue-700"
+                                                variant="ghost"
+                                                // Eliminamos el padding derecho para que el separador esté centrado
+                                                className="h-7 flex-1 justify-start pr-0 pl-2.5 text-[11px] font-normal hover:bg-transparent"
                                             >
-                                                Aplicar
+                                                <CalendarIcon className="mr-2 size-3.5 shrink-0 text-[var(--secondary-foreground)]/60" />
+                                                <span>
+                                                    {data.fecha_desde ? (
+                                                        format(
+                                                            parse(data.fecha_desde, 'yyyy-MM-dd', new Date()),
+                                                            'dd/MM/yyyy',
+                                                        )
+                                                    ) : (
+                                                        <span className="text-[var(--secondary-foreground)]/60">
+                                                            Desde
+                                                        </span>
+                                                    )}
+                                                </span>
                                             </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                            className="w-auto p-0"
+                                            align="start"
+                                        >
+                                            <Calendar
+                                                mode="single"
+                                                locale={es}
+                                                selected={
+                                                    data.fecha_desde
+                                                        ? parse(data.fecha_desde, 'yyyy-MM-dd', new Date())
+                                                        : undefined
+                                                }
+                                                onSelect={(date) => {
+                                                    setData(
+                                                        'fecha_desde',
+                                                        date
+                                                            ? format(
+                                                                  date,
+                                                                  'yyyy-MM-dd',
+                                                              )
+                                                            : '',
+                                                    );
+                                                    setOpenDesde(false);
+                                                }}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    {/* Fecha Hasta */}
+                                    <Popover
+                                        open={openHasta}
+                                        onOpenChange={setOpenHasta}
+                                    >
+                                        <PopoverTrigger asChild>
                                             <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={clearFilters}
-                                                className="h-9 border-slate-300 px-5 text-[13px] font-medium hover:bg-slate-50"
+                                                variant="ghost"
+                                                // El pl-1 compensa el espacio del separador para que el icono se vea centrado
+                                                className="h-7 flex-1 justify-start pr-2.5 pl-1 text-[11px] font-normal hover:bg-transparent"
                                             >
-                                                Limpiar
+                                                <CalendarIcon className="mr-2 size-3.5 shrink-0 text-[var(--secondary-foreground)]/60" />
+                                                <span>
+                                                    {data.fecha_hasta ? (
+                                                        format(
+                                                            parse(data.fecha_hasta, 'yyyy-MM-dd', new Date()),
+                                                            'dd/MM/yyyy',
+                                                        )
+                                                    ) : (
+                                                        <span className="text-[var(--secondary-foreground)]/60">
+                                                            Hasta
+                                                        </span>
+                                                    )}
+                                                </span>
                                             </Button>
-                                        </div>
-                                    </div>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                            className="w-auto p-0"
+                                            align="start"
+                                        >
+                                            <Calendar
+                                                mode="single"
+                                                locale={es}
+                                                selected={
+                                                    data.fecha_hasta
+                                                        ? parse(data.fecha_hasta, 'yyyy-MM-dd', new Date())
+                                                        : undefined
+                                                }
+                                                onSelect={(date) => {
+                                                    setData(
+                                                        'fecha_hasta',
+                                                        date
+                                                            ? format(
+                                                                  date,
+                                                                  'yyyy-MM-dd',
+                                                              )
+                                                            : '',
+                                                    );
+                                                    setOpenHasta(false);
+                                                }}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                {/* Botones */}
+                                <div className="ml-auto flex items-center gap-1">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={clearFilters}
+                                        className="h-8 w-8 rounded-md p-0 text-muted-foreground hover:bg-muted"
+                                    >
+                                        <RotateCcw className="size-3.5" />
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        className="h-8 rounded-md bg-primary px-4 text-[12px] font-medium text-white shadow-sm hover:bg-primary/90 active:scale-95"
+                                    >
+                                        Aplicar
+                                    </Button>
+                                </div>
+                            </div>
                         </form>
                     </CardHeader>
+
+                    <Separator className="mx-auto !w-[90%] bg-border/40" />
+
                     <CardContent>
-                        <div className="mb-4 flex flex-col gap-3 border-b pb-4 md:flex-row md:items-center md:justify-between">
+                        <div className="mb-4 flex flex-col gap-4 border-border/40 md:flex-row md:items-center md:justify-between">
+                            {/* Izquierda: Selector de cantidad por página */}
                             <div className="flex items-center gap-2">
-                                <Label className="text-xs font-medium text-slate-500">
+                                <span className="text-[12px] text-muted-foreground">
                                     Mostrar
-                                </Label>
+                                </span>
                                 <Select
                                     value={data.per_page}
                                     onValueChange={changePerPage}
                                 >
-                                    <SelectTrigger className="h-8 w-[96px] text-[13px]">
+                                    <SelectTrigger className="!h-8 w-[65px] border-border/50 bg-transparent text-[12px] font-medium shadow-none focus:ring-1">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="5">5</SelectItem>
-                                        <SelectItem value="7">7</SelectItem>
-                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem
+                                            value="5"
+                                            className="text-[11px]"
+                                        >
+                                            5
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="7"
+                                            className="text-[11px]"
+                                        >
+                                            7
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="10"
+                                            className="text-[11px]"
+                                        >
+                                            10
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <span className="text-[12px] text-muted-foreground">
+                                    por página
+                                </span>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <p className="text-xs text-muted-foreground">
+                            {/* Derecha: Info de resultados y Paginación compacta */}
+                            <div className="flex items-center gap-4">
+                                <p className="border-r border-border/50 pr-4 text-[11px] font-medium text-muted-foreground/60">
                                     {documentos.total > 0
                                         ? `${documentos.from ?? 0}-${documentos.to ?? 0} de ${documentos.total}`
                                         : '0 resultados'}
                                 </p>
-                                <Pagination className="mx-0 w-auto justify-end">
-                                    <PaginationContent>
+
+                                <Pagination className="mx-0 w-auto">
+                                    <PaginationContent className="gap-1">
+                                        {/* Botón Anterior - Solo el icono */}
                                         <PaginationItem>
                                             <PaginationPrevious
                                                 href={previousLink?.url ?? '#'}
-                                                onClick={(event) => {
-                                                    event.preventDefault();
+                                                onClick={(e) => {
+                                                    e.preventDefault();
                                                     goToPaginationUrl(
                                                         previousLink?.url ??
                                                             null,
                                                     );
                                                 }}
-                                                className={!previousLink?.url ? 'pointer-events-none opacity-50' : ''}
+                                                className={`h-8 w-8 rounded-md border-border/40 p-0 hover:bg-muted ${
+                                                    !previousLink?.url
+                                                        ? 'pointer-events-none opacity-40'
+                                                        : ''
+                                                }`}
                                             />
                                         </PaginationItem>
 
-                                        {pageLinks.map((link) => (
-                                            <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
+                                        {/* Números de página */}
+                                        {pageLinks.map((link, idx) => (
+                                            <PaginationItem key={idx}>
                                                 <PaginationLink
                                                     href={link.url ?? '#'}
                                                     isActive={link.active}
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
                                                         goToPaginationUrl(
                                                             link.url,
                                                         );
                                                     }}
-                                                    className={!link.url ? 'pointer-events-none opacity-50' : ''}
+                                                    className={`h-8 min-w-[32px] rounded-md text-[11px] transition-all ${
+                                                        link.active
+                                                            ? 'bg-[var(--primary)]  hover:bg-[var(--primary)]/80 hover:text-white text-white '
+                                                            : 'border-transparent text-muted-foreground hover:bg-muted'
+                                                    } ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
                                                 >
+                                                    {/* Limpiamos las etiquetas de Laravel para dejar SOLO el número */}
                                                     {link.label
-                                                        .replace('&laquo;', '')
-                                                        .replace('&raquo;', '')
                                                         .replace(
-                                                            'pagination.previous',
-                                                            'Anterior',
+                                                            '&laquo; Previous',
+                                                            '',
                                                         )
                                                         .replace(
-                                                            'pagination.next',
-                                                            'Siguiente',
-                                                        )}
+                                                            'Next &raquo;',
+                                                            '',
+                                                        )
+                                                        .replace('...', '..')}
                                                 </PaginationLink>
                                             </PaginationItem>
                                         ))}
 
+                                        {/* Botón Siguiente - Solo el icono */}
                                         <PaginationItem>
                                             <PaginationNext
                                                 href={nextLink?.url ?? '#'}
-                                                onClick={(event) => {
-                                                    event.preventDefault();
+                                                onClick={(e) => {
+                                                    e.preventDefault();
                                                     goToPaginationUrl(
                                                         nextLink?.url ?? null,
                                                     );
                                                 }}
-                                                className={!nextLink?.url ? 'pointer-events-none opacity-50' : ''}
+                                                className={`h-8 w-8 rounded-md border-border/40 p-0 hover:bg-muted ${
+                                                    !nextLink?.url
+                                                        ? 'pointer-events-none opacity-40'
+                                                        : ''
+                                                }`}
                                             />
                                         </PaginationItem>
                                     </PaginationContent>
                                 </Pagination>
                             </div>
                         </div>
-
-                        <DataTable
-                            documentos={documentos.data}
-                            canDelete={!isAdmin}
-                            currentUserId={currentUserId}
-                        />
+                        <div className="rounded-lg md:border md:border-[var(--border)]">
+                            <DataTable
+                                documentos={documentos.data}
+                                canDelete={true}
+                                isAdmin={isAdmin}
+                                currentUserId={currentUserId}
+                                currentUserAreaId={currentUserAreaId}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
             </div>

@@ -2,15 +2,19 @@
 
 use App\Models\Area;
 use App\Models\Documento;
+use App\Models\Movimiento;
 use App\Models\Remitente;
 use App\Models\User;
 use App\Services\OcrService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\delete as deleteRequest;
+use function Pest\Laravel\from;
 use function Pest\Laravel\get;
 use function Pest\Laravel\patch;
 use function Pest\Laravel\post;
@@ -41,6 +45,8 @@ test('usuario can open create documento page', function () {
 
 test('store saves documento with authenticated user area and ocr content', function () {
     Storage::fake('public');
+    Log::spy();
+    Log::shouldReceive('channel')->andReturnSelf();
 
     $area = Area::create(['nombre' => 'MESA DE PARTES']);
     $usuario = User::factory()->create([
@@ -53,7 +59,8 @@ test('store saves documento with authenticated user area and ocr content', funct
         'estado' => true,
     ]);
 
-    $ocrService = new class('/usr/bin/tesseract', 'spa', 300, 300) extends OcrService {
+    $ocrService = new class('/usr/bin/tesseract', 'spa', 300, 300) extends OcrService
+    {
         public function extractText(string $absolutePath): string
         {
             return 'TEXTO OCR DE PRUEBA';
@@ -79,11 +86,21 @@ test('store saves documento with authenticated user area and ocr content', funct
 
     expect($documento->user_id)->toBe($usuario->id_user)
         ->and($documento->area_actual_id)->toBe($usuario->area_id)
+        ->and($documento->area_creadora_id)->toBe($usuario->area_id)
         ->and($documento->recibido)->toBe('subido')
         ->and($documento->contenido_ocr)->toBe('TEXTO OCR DE PRUEBA')
         ->and($documento->archivo)->toBe('documentos/'.$documento->id_documento.'.pdf');
 
     expect(Storage::disk('public')->exists($documento->archivo))->toBeTrue();
+
+    Log::shouldHaveReceived('info')
+        ->with('Documento creado', Mockery::on(function (array $context) use ($documento, $usuario): bool {
+            return isset($context['id_documento'], $context['user_id'], $context['area_actual_id'])
+                && $context['id_documento'] === $documento->id_documento
+                && $context['user_id'] === $usuario->id_user
+                && $context['area_actual_id'] === $usuario->area_id;
+        }))
+        ->once();
 });
 
 test('store rejects duplicated numero oficio among active documentos', function () {
@@ -128,6 +145,8 @@ test('store rejects duplicated numero oficio among active documentos', function 
 
 test('store keeps documento when ocr fails', function () {
     Storage::fake('public');
+    Log::spy();
+    Log::shouldReceive('channel')->andReturnSelf();
 
     $area = Area::create(['nombre' => 'LEGAL']);
     $usuario = User::factory()->create([
@@ -140,7 +159,8 @@ test('store keeps documento when ocr fails', function () {
         'estado' => true,
     ]);
 
-    $ocrService = new class('/usr/bin/tesseract', 'spa', 300, 300) extends OcrService {
+    $ocrService = new class('/usr/bin/tesseract', 'spa', 300, 300) extends OcrService
+    {
         public function extractText(string $absolutePath): string
         {
             throw new RuntimeException('OCR failure');
@@ -164,6 +184,16 @@ test('store keeps documento when ocr fails', function () {
     $documento = Documento::query()->firstOrFail();
 
     expect($documento->contenido_ocr)->toBeNull();
+
+    Log::shouldHaveReceived('error')
+        ->with('OCR falló al crear documento', Mockery::on(function (array $context) use ($documento, $usuario): bool {
+            return $context['id_documento'] === $documento->id_documento
+                && $context['user_id'] === $usuario->id_user
+                && $context['area_actual_id'] === $usuario->area_id
+                && $context['archivo'] === $documento->archivo
+                && $context['exception_message'] === 'OCR failure';
+        }))
+        ->once();
 });
 
 test('index filters documentos by remitente and con ocr', function () {
@@ -368,7 +398,7 @@ test('index paginates documentos and accepts per_page options', function () {
         );
 });
 
-test('usuario can view documentos currently assigned to their area', function () {
+test('usuario cannot view documentos from other users in their area via index', function () {
     $areaOrigen = Area::create(['nombre' => 'MESA DE PARTES']);
     $areaDestino = Area::create(['nombre' => 'TICS']);
 
@@ -408,8 +438,7 @@ test('usuario can view documentos currently assigned to their area', function ()
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('user/documentos/index')
-            ->has('documentos.data', 1)
-            ->where('documentos.data.0.id_documento', $documento->id_documento)
+            ->has('documentos.data', 0)
         );
 });
 
@@ -476,7 +505,7 @@ test('admin cannot access create or store documento actions', function () {
 
     actingAs($admin);
 
-    get(route('user.documentos.create'))->assertForbidden();
+    get(route('user.documentos.create'))->assertRedirect('/');
 
     post(route('user.documentos.store'), [
         'numero_oficio' => 'OF-2026-321',
@@ -485,7 +514,7 @@ test('admin cannot access create or store documento actions', function () {
         'tipo' => 'externo',
         'palabra_clave' => 'BLOQUEADO',
         'archivo' => UploadedFile::fake()->create('oficio-admin.pdf', 500, 'application/pdf'),
-    ])->assertForbidden();
+    ])->assertRedirect('/');
 });
 
 test('usuario can view documento detail page with ocr content and file information', function () {
@@ -527,6 +556,65 @@ test('usuario can view documento detail page with ocr content and file informati
         );
 });
 
+test('usuario opening documento detail auto marks pending incoming movimiento as recibido', function () {
+    $areaOrigen = Area::create(['nombre' => 'MESA DE PARTES']);
+    $areaDestino = Area::create(['nombre' => 'TICS']);
+
+    $usuarioOrigen = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $areaOrigen->id_area,
+    ]);
+
+    $usuarioDestino = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $areaDestino->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-320',
+        'fecha_oficio' => '2026-04-04',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'AUTO-RECIBIDO',
+        'archivo' => 'documentos/oficio-320.jpg',
+        'contenido_ocr' => 'CONTENIDO',
+        'area_actual_id' => $areaDestino->id_area,
+        'user_id' => $usuarioOrigen->id_user,
+        'recibido' => 'enviado',
+    ]);
+
+    $movimiento = Movimiento::create([
+        'documento_id' => $documento->id_documento,
+        'de_area_id' => $areaOrigen->id_area,
+        'a_area_id' => $areaDestino->id_area,
+        'enviado_por' => $usuarioOrigen->id_user,
+        'comentario' => 'Pendiente de revisar.',
+        'fecha_envio' => now()->subMinutes(5),
+        'fecha_recepcion' => null,
+    ]);
+
+    actingAs($usuarioDestino);
+
+    get(route('user.documentos.show', $documento->id_documento))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('user/documentos/show')
+            ->where('documento.id_documento', $documento->id_documento)
+            ->where('documento.recibido', 'recibido')
+        );
+
+    $movimiento->refresh();
+    $documento->refresh();
+
+    expect($movimiento->fecha_recepcion)->not->toBeNull()
+        ->and($documento->recibido)->toBe('recibido');
+});
+
 test('usuario cannot view documento detail from another area', function () {
     $areaUsuario = Area::create(['nombre' => 'MESA DE PARTES']);
     $areaDocumento = Area::create(['nombre' => 'TICS']);
@@ -561,7 +649,87 @@ test('usuario cannot view documento detail from another area', function () {
     actingAs($usuario);
 
     get(route('user.documentos.show', $documento->id_documento))
-        ->assertForbidden();
+        ->assertRedirect('/');
+});
+
+test('document owner can view detail but cannot send when another area has custody', function () {
+    $areaPropietario = Area::create(['nombre' => 'MESA DE PARTES']);
+    $areaCustodia = Area::create(['nombre' => 'TICS']);
+
+    $usuarioPropietario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $areaPropietario->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-302',
+        'fecha_oficio' => '2026-04-04',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'CUSTODIA',
+        'archivo' => 'documentos/oficio-302.jpg',
+        'contenido_ocr' => 'OTRO TEXTO OCR',
+        'area_actual_id' => $areaCustodia->id_area,
+        'user_id' => $usuarioPropietario->id_user,
+        'recibido' => 'enviado',
+    ]);
+
+    actingAs($usuarioPropietario);
+
+    get(route('user.documentos.show', $documento->id_documento))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('user/documentos/show')
+            ->where('canEnviar', false)
+        );
+});
+
+test('usuario or area cannot see others documentos in index but can access via direct url', function () {
+    $areaCreadora = Area::create(['nombre' => 'SECRETARIA']);
+    $areaCustodia = Area::create(['nombre' => 'TALENTO HUMANO']);
+
+    $usuarioCreador = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $areaCreadora->id_area,
+    ]);
+
+    $usuarioMismaArea = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $areaCreadora->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-350',
+        'fecha_oficio' => '2026-04-06',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'VISIBILIDAD-CREADORA',
+        'archivo' => 'documentos/oficio-350.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $areaCustodia->id_area,
+        'area_creadora_id' => $areaCreadora->id_area,
+        'user_id' => $usuarioCreador->id_user,
+        'recibido' => 'enviado',
+    ]);
+
+    actingAs($usuarioMismaArea);
+
+    get(route('user.documentos.index'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('user/documentos/index')
+            ->has('documentos.data', 0)
+        );
 });
 
 test('admin can view and edit another users documento', function () {
@@ -599,7 +767,11 @@ test('admin can view and edit another users documento', function () {
     actingAs($admin);
 
     get(route('user.documentos.show', $documento->id_documento))
-        ->assertSuccessful();
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('user/documentos/show')
+            ->where('canEnviar', true)
+        );
 
     patch(route('user.documentos.update', $documento->id_documento), [
         'numero_oficio' => 'OF-2026-399-ADMIN',
@@ -614,6 +786,48 @@ test('admin can view and edit another users documento', function () {
     expect($documento->numero_oficio)->toBe('OF-2026-399-ADMIN')
         ->and($documento->tipo)->toBe('interno')
         ->and($documento->palabra_clave)->toBe('EDITADO-ADMIN');
+});
+
+test('admin can open send sheet even when documento is not subido', function () {
+    $area = Area::create(['nombre' => 'MESA DE PARTES']);
+    $adminArea = Area::create(['nombre' => 'ADMIN']);
+
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+        'area_id' => $adminArea->id_area,
+    ]);
+
+    $usuario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $area->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-398',
+        'fecha_oficio' => '2026-04-04',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'ADMIN-SEND',
+        'archivo' => 'documentos/oficio-398.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'recibido',
+    ]);
+
+    actingAs($admin);
+
+    get(route('user.documentos.show', $documento->id_documento))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('user/documentos/show')
+            ->where('canEnviar', true)
+        );
 });
 
 test('usuario can soft delete own documento', function () {
@@ -639,6 +853,43 @@ test('usuario can soft delete own documento', function () {
         'area_actual_id' => $area->id_area,
         'user_id' => $usuario->id_user,
         'recibido' => 'subido',
+    ]);
+
+    actingAs($usuario);
+
+    deleteRequest(route('user.documentos.destroy', $documento->id_documento))
+        ->assertRedirect(route('user.documentos.index'));
+
+    expect(Documento::query()->whereKey($documento->id_documento)->exists())->toBeFalse()
+        ->and(Documento::onlyTrashed()->whereKey($documento->id_documento)->exists())->toBeTrue();
+});
+
+test('usuario can soft delete own documento even when another area has current custody', function () {
+    $areaCreadora = Area::create(['nombre' => 'SECRETARIA']);
+    $areaCustodia = Area::create(['nombre' => 'ARCHIVO']);
+
+    $usuario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $areaCreadora->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-750',
+        'fecha_oficio' => '2026-04-07',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'ELIMINAR-EN-CUSTODIA',
+        'archivo' => 'documentos/oficio-750.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $areaCustodia->id_area,
+        'area_creadora_id' => $areaCreadora->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'enviado',
     ]);
 
     actingAs($usuario);
@@ -685,6 +936,161 @@ test('usuario cannot soft delete another users documento', function () {
         ->assertNotFound();
 
     expect(Documento::query()->whereKey($documento->id_documento)->exists())->toBeTrue();
+});
+
+test('admin can soft delete another users documento', function () {
+    $area = Area::create(['nombre' => 'MESA DE PARTES']);
+    $adminArea = Area::create(['nombre' => 'ADMIN']);
+
+    $usuario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $area->id_area,
+    ]);
+
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+        'area_id' => $adminArea->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-703',
+        'fecha_oficio' => '2026-04-05',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'ADMIN-DELETE',
+        'archivo' => 'documentos/oficio-703.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'subido',
+    ]);
+
+    actingAs($admin);
+
+    deleteRequest(route('user.documentos.destroy', $documento->id_documento))
+        ->assertRedirect(route('user.documentos.index'));
+
+    expect(Documento::query()->whereKey($documento->id_documento)->exists())->toBeFalse()
+        ->and(Documento::onlyTrashed()->whereKey($documento->id_documento)->exists())->toBeTrue();
+});
+
+test('admin cannot soft delete documento with movements', function () {
+    $area = Area::create(['nombre' => 'MESA DE PARTES']);
+    $areaDestino = Area::create(['nombre' => 'TICS']);
+    $adminArea = Area::create(['nombre' => 'ADMIN']);
+
+    $usuario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $area->id_area,
+    ]);
+
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+        'area_id' => $adminArea->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-704',
+        'fecha_oficio' => '2026-04-05',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'ADMIN-BLOCKED',
+        'archivo' => 'documentos/oficio-704.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'subido',
+    ]);
+
+    Movimiento::create([
+        'documento_id' => $documento->id_documento,
+        'de_area_id' => $area->id_area,
+        'a_area_id' => $areaDestino->id_area,
+        'enviado_por' => $usuario->id_user,
+        'comentario' => 'Seguimiento',
+        'fecha_envio' => now(),
+    ]);
+
+    actingAs($admin);
+
+    from(route('user.documentos.index'))
+        ->delete(route('user.documentos.destroy', $documento->id_documento))
+        ->assertRedirect(route('user.documentos.index'))
+        ->assertSessionHasErrors([
+            'documento' => 'No se puede eliminar este oficio porque tiene movimientos asociados.',
+        ]);
+
+    expect(Documento::query()->whereKey($documento->id_documento)->exists())->toBeTrue()
+        ->and(Documento::onlyTrashed()->whereKey($documento->id_documento)->exists())->toBeFalse();
+});
+
+test('admin cannot soft delete documento with child documentos', function () {
+    $area = Area::create(['nombre' => 'MESA DE PARTES']);
+    $adminArea = Area::create(['nombre' => 'ADMIN']);
+
+    $usuario = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $area->id_area,
+    ]);
+
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+        'area_id' => $adminArea->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'CONTRALORIA',
+        'estado' => true,
+    ]);
+
+    $documento = Documento::create([
+        'numero_oficio' => 'OF-2026-705',
+        'fecha_oficio' => '2026-04-05',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'ADMIN-BLOCKED-CHILD',
+        'archivo' => 'documentos/oficio-705.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'subido',
+    ]);
+
+    Documento::create([
+        'numero_oficio' => 'OF-2026-705-1',
+        'fecha_oficio' => '2026-04-05',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'HIJO',
+        'archivo' => 'documentos/oficio-705-1.jpg',
+        'contenido_ocr' => 'OCR',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $usuario->id_user,
+        'recibido' => 'subido',
+        'documento_padre_id' => $documento->id_documento,
+    ]);
+
+    actingAs($admin);
+
+    from(route('user.documentos.index'))
+        ->delete(route('user.documentos.destroy', $documento->id_documento))
+        ->assertRedirect(route('user.documentos.index'))
+        ->assertSessionHasErrors([
+            'documento' => 'No se puede eliminar este oficio porque tiene documentos hijos asociados.',
+        ]);
+
+    expect(Documento::query()->whereKey($documento->id_documento)->exists())->toBeTrue()
+        ->and(Documento::onlyTrashed()->whereKey($documento->id_documento)->exists())->toBeFalse();
 });
 
 test('admin can view deleted documentos and restore them', function () {
@@ -854,7 +1260,8 @@ test('replacing file clears previous ocr when new ocr extraction fails', functio
         'recibido' => 'subido',
     ]);
 
-    $ocrService = new class('/usr/bin/tesseract', 'spa', 300, 300) extends OcrService {
+    $ocrService = new class('/usr/bin/tesseract', 'spa', 300, 300) extends OcrService
+    {
         public function extractText(string $absolutePath): string
         {
             throw new RuntimeException('OCR update failure');

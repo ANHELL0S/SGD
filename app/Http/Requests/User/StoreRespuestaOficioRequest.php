@@ -3,6 +3,7 @@
 namespace App\Http\Requests\User;
 
 use App\Models\Documento;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class StoreRespuestaOficioRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, \Illuminate\Contracts\Validation\ValidationRule|string>|string>
+     * @return array<string, array<int, ValidationRule|string>|string>
      */
     public function rules(): array
     {
@@ -33,7 +34,7 @@ class StoreRespuestaOficioRequest extends FormRequest
             ],
             'fecha_oficio' => ['required', 'date'],
             'remitente_id' => ['required', 'integer', Rule::exists('remitentes', 'id_remitente')],
-            'tipo' => ['required', Rule::in(['interno', 'externo'])],
+            'tipo' => ['required', Rule::in(['interno'])],
             'palabra_clave' => ['required', 'string', 'max:100'],
             'archivo' => ['required', 'file', 'mimes:pdf', 'max:4096'],
             'comentario_envio' => ['required', 'string', 'max:2000'],

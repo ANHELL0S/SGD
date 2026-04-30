@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nombre', 100);
             $table->boolean('estado')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

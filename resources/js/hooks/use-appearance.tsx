@@ -99,16 +99,21 @@ export function useAppearance(): UseAppearanceReturn {
         : 'light';
 
     const updateAppearance = (mode: Appearance): void => {
-        currentAppearance = mode;
+        const apply = () => {
+            currentAppearance = mode;
+            localStorage.setItem('appearance', mode);
+            setCookie('appearance', mode);
+            applyTheme(mode);
+            notify();
+        };
 
-        // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', mode);
+        const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
 
-        // Store in cookie for SSR...
-        setCookie('appearance', mode);
-
-        applyTheme(mode);
-        notify();
+        if (doc.startViewTransition) {
+            doc.startViewTransition(apply);
+        } else {
+            apply();
+        }
     };
 
     return { appearance, resolvedAppearance, updateAppearance } as const;

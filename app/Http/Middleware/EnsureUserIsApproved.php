@@ -16,7 +16,7 @@ class EnsureUserIsApproved
     {
         $user = $request->user();
 
-        if (! $user || $user->estado === 'aprobado') {
+        if (! $user || ($user->estado === 'aprobado' && $user->habilitado)) {
             return $next($request);
         }
 
@@ -24,8 +24,12 @@ class EnsureUserIsApproved
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        $errorMessage = ! $user->habilitado
+            ? 'Su cuenta ha sido deshabilitada. Contacte con un administrador.'
+            : 'Su cuenta aún no ha sido aprobada';
+
         return redirect()->route('login')->withErrors([
-            'email' => 'Su cuenta aún no ha sido aprobada',
+            'email' => $errorMessage,
         ]);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Logging\DatabaseLoggerFactory;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -54,8 +55,14 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'single,database')),
             'ignore_exceptions' => false,
+        ],
+
+        'database' => [
+            'driver' => 'custom',
+            'via' => DatabaseLoggerFactory::class,
+            'level' => 'debug',
         ],
 
         'single' => [
@@ -69,6 +76,62 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'auth' => [
+            'driver' => 'stack',
+            'channels' => ['auth_file', 'database'],
+            'ignore_exceptions' => false,
+        ],
+
+        'auth_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/auth.log'),
+            'level' => 'debug',
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'documentos' => [
+            'driver' => 'stack',
+            'channels' => ['documentos_file', 'database'],
+            'ignore_exceptions' => false,
+        ],
+
+        'documentos_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/documentos.log'),
+            'level' => 'debug',
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'movimientos' => [
+            'driver' => 'stack',
+            'channels' => ['movimientos_file', 'database'],
+            'ignore_exceptions' => false,
+        ],
+
+        'movimientos_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/movimientos.log'),
+            'level' => 'debug',
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'errores' => [
+            'driver' => 'stack',
+            'channels' => ['errores_file', 'database'],
+            'ignore_exceptions' => false,
+        ],
+
+        'errores_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/errores.log'),
+            'level' => 'debug',
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],

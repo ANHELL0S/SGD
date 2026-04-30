@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id('id_area');
             $table->string('nombre', 100);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

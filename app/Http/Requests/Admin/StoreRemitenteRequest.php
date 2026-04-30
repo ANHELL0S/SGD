@@ -32,15 +32,11 @@ class StoreRemitenteRequest extends FormRequest
         $this->merge($payload);
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, array<int, string>|string>
-     */
     public function rules(): array
     {
         return [
             'nombre' => ['required', 'string', 'max:100', 'regex:/^[\pL\pN\s]+$/u'],
+            'email' => ['nullable', 'email', 'max:255'],
             'estado' => ['sometimes', 'boolean'],
         ];
     }

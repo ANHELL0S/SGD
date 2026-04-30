@@ -1,11 +1,12 @@
 <?php
 
-use App\Models\Remitente;
 use App\Models\Area;
 use App\Models\Documento;
+use App\Models\Remitente;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\delete;
 use function Pest\Laravel\from;
@@ -40,7 +41,89 @@ test('admin users can view remitentes page', function () {
             ->has('remitentes.data')
             ->where('remitentes.data', fn ($remitentes) => $remitentes->contains(function (array $current) use ($remitente): bool {
                 return $current['id_remitente'] === $remitente->id_remitente
-                    && $current['nombre'] === 'MUNICIPALIDAD 01';
+                    && $current['nombre'] === 'MUNICIPALIDAD 01'
+                    && $current['can_delete'] === true;
+            }))
+        );
+});
+
+test('admin remitentes are ordered from highest id to lowest id', function () {
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+    ]);
+
+    $firstRemitente = Remitente::create([
+        'nombre' => 'ZZZ 01',
+        'estado' => true,
+    ]);
+
+    $secondRemitente = Remitente::create([
+        'nombre' => 'AAA 02',
+        'estado' => true,
+    ]);
+
+    $thirdRemitente = Remitente::create([
+        'nombre' => 'MMM 03',
+        'estado' => true,
+    ]);
+
+    actingAs($admin);
+
+    get(route('admin.remitentes.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/remitentes/index')
+            ->where('remitentes.data', fn ($remitentes) => $remitentes
+                ->pluck('id_remitente')
+                ->values()
+                ->all() === [
+                    $thirdRemitente->id_remitente,
+                    $secondRemitente->id_remitente,
+                    $firstRemitente->id_remitente,
+                ]));
+});
+
+test('remitente with oficio dependencies is marked as not deletable in inertia props', function () {
+    $admin = User::factory()->create([
+        'rol' => 'admin',
+    ]);
+
+    $area = Area::create([
+        'nombre' => 'MESA DE PARTES',
+    ]);
+
+    $user = User::factory()->create([
+        'rol' => 'user',
+        'area_id' => $area->id_area,
+    ]);
+
+    $remitente = Remitente::create([
+        'nombre' => 'BLOQUEADO 01',
+        'estado' => true,
+    ]);
+
+    Documento::create([
+        'numero_oficio' => 'OF-2026-997',
+        'fecha_oficio' => '2026-04-09',
+        'remitente_id' => $remitente->id_remitente,
+        'tipo' => 'externo',
+        'palabra_clave' => 'DEPENDENCIA-REMITENTE',
+        'archivo' => 'documentos/test-997.pdf',
+        'area_actual_id' => $area->id_area,
+        'user_id' => $user->id_user,
+        'recibido' => 'recibido',
+    ]);
+
+    actingAs($admin);
+
+    get(route('admin.remitentes.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/remitentes/index')
+            ->where('remitentes.data', fn ($remitentes) => $remitentes->contains(function (array $current) use ($remitente): bool {
+                return $current['id_remitente'] === $remitente->id_remitente
+                    && $current['can_delete'] === false
+                    && $current['delete_block_reason'] !== null;
             }))
         );
 });

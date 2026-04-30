@@ -5,15 +5,19 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreDocumentoRequest;
 use App\Http\Requests\User\UpdateDocumentoRequest;
+use App\Jobs\ProcesarOcrDocumentoJob;
 use App\Models\Area;
 use App\Models\Documento;
 use App\Models\Movimiento;
 use App\Models\Remitente;
-use App\Services\OcrService;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,7 +25,7 @@ use Throwable;
 
 class DocumentoController extends Controller
 {
-    public function __construct(private readonly OcrService $ocrService) {}
+    public function __construct() {}
 
     public function index(Request $request): Response
     {
@@ -52,11 +56,7 @@ class DocumentoController extends Controller
                 'user.area:id_area,nombre',
             ])
             ->when(! $isAdmin, function (Builder $query) use ($user): void {
-                $query->where(function (Builder $visibilityQuery) use ($user): void {
-                    $visibilityQuery
-                        ->where('user_id', $user->id_user)
-                        ->orWhere('area_actual_id', $user->area_id);
-                });
+                $query->where('user_id', $user->id_user);
             })
             ->when($filters['palabra_clave'] !== '', fn (Builder $query) => $query->where('palabra_clave', 'like', "%{$filters['palabra_clave']}%"))
             ->when($filters['texto_ocr'] !== '', fn (Builder $query) => $query->where('contenido_ocr', 'like', "%{$filters['texto_ocr']}%"))
@@ -74,8 +74,11 @@ class DocumentoController extends Controller
                 'remitente_id',
                 'tipo',
                 'palabra_clave',
+                'asunto',
                 'archivo',
                 'recibido',
+                'area_actual_id',
+                'area_creadora_id',
                 'user_id',
                 'created_at',
             ])
@@ -86,7 +89,7 @@ class DocumentoController extends Controller
             'filters' => $filters,
             'remitentes' => Remitente::query()
                 ->where('estado', true)
-                ->orderBy('nombre')
+                ->orderBy('id_remitente')
                 ->get(['id_remitente', 'nombre']),
         ]);
     }
@@ -96,7 +99,7 @@ class DocumentoController extends Controller
         return Inertia::render('user/documentos/create', [
             'remitentes' => Remitente::query()
                 ->where('estado', true)
-                ->orderBy('nombre')
+                ->orderBy('id_remitente')
                 ->get(['id_remitente', 'nombre']),
             'tipos' => ['interno', 'externo'],
         ]);
@@ -111,12 +114,13 @@ class DocumentoController extends Controller
             ])
             ->findOrFail($documento);
 
-        $this->ensureCanManageDocumento($request, $documento);
+        $this->ensureCanEditar($request, $documento);
 
         return Inertia::render('user/documentos/edit', [
             'documento' => [
                 'id_documento' => $documento->id_documento,
                 'numero_oficio' => $documento->numero_oficio,
+                'asunto' => $documento->asunto,
                 'fecha_oficio' => $documento->fecha_oficio !== null
                     ? substr((string) $documento->fecha_oficio, 0, 10)
                     : null,
@@ -128,7 +132,7 @@ class DocumentoController extends Controller
             ],
             'remitentes' => Remitente::query()
                 ->where('estado', true)
-                ->orderBy('nombre')
+                ->orderBy('id_remitente')
                 ->get(['id_remitente', 'nombre']),
             'tipos' => ['interno', 'externo'],
         ]);
@@ -146,21 +150,41 @@ class DocumentoController extends Controller
             ])
             ->findOrFail($documento);
 
-        $this->ensureCanManageDocumento($request, $documento);
+        $this->ensureCanVer($request, $documento);
+
+        $this->autoRecibirMovimientoPendiente($user, $documento);
 
         $movimientos = Movimiento::query()
             ->with([
                 'deArea:id_area,nombre',
                 'aArea:id_area,nombre',
                 'remitente:id_user,nombre,apellido',
+                'destinatario:id_user,nombre,apellido',
             ])
             ->where('documento_id', $documento->id_documento)
+            ->when($user?->rol !== 'admin', function ($query) use ($user): void {
+                if ($user === null) {
+                    return;
+                }
+
+                $query->where(function ($nested) use ($user): void {
+                    $nested->where('de_area_id', $user->area_id)
+                        ->orWhere(function ($destino) use ($user): void {
+                            $destino->where('a_area_id', $user->area_id)
+                                ->where(function ($destinatario) use ($user): void {
+                                    $destinatario->whereNull('destinatario_user_id')
+                                        ->orWhere('destinatario_user_id', $user->id_user);
+                                });
+                        });
+                });
+            })
             ->orderByDesc('fecha_envio')
             ->get([
                 'id_movimiento',
                 'documento_id',
                 'de_area_id',
                 'a_area_id',
+                'destinatario_user_id',
                 'enviado_por',
                 'comentario',
                 'fecha_envio',
@@ -171,38 +195,106 @@ class DocumentoController extends Controller
             'documento' => $documento,
             'areas' => Area::query()
                 ->where('id_area', '!=', $documento->area_actual_id)
-                ->orderBy('nombre')
+                ->orderBy('id_area')
                 ->get(['id_area', 'nombre']),
+            'usuariosDestino' => User::query()
+                ->where('rol', 'user')
+                ->where('estado', 'aprobado')
+                ->where('habilitado', true)
+                ->whereNotNull('area_id')
+                ->orderBy('nombre')
+                ->orderBy('apellido')
+                ->get(['id_user', 'nombre', 'apellido', 'area_id']),
             'movimientos' => $movimientos,
-            'canEnviar' => $user !== null && $user->rol === 'user' && $user->area_id === $documento->area_actual_id,
+            'canEnviar' => $user !== null
+                && $user->rol !== 'consultor'
+                && (
+                    $user->rol === 'admin'
+                    || $user->area_id === $documento->area_actual_id
+                ),
             'userAreaId' => $user?->area_id,
+            'userId' => $user?->id_user,
         ]);
+    }
+
+    private function autoRecibirMovimientoPendiente(?User $user, Documento $documento): void
+    {
+        if ($user === null || $user->area_id === null) {
+            return;
+        }
+
+        $movimientoPendiente = Movimiento::query()
+            ->where('documento_id', $documento->id_documento)
+            ->where('a_area_id', $user->area_id)
+            ->where(function ($query) use ($user): void {
+                $query->whereNull('destinatario_user_id')
+                    ->orWhere('destinatario_user_id', $user->id_user);
+            })
+            ->whereNull('fecha_recepcion')
+            ->orderByDesc('fecha_envio')
+            ->orderByDesc('id_movimiento')
+            ->first();
+
+        if ($movimientoPendiente === null) {
+            return;
+        }
+
+        $fechaRecepcion = now();
+
+        try {
+            DB::transaction(function () use ($movimientoPendiente, $fechaRecepcion): void {
+                $movimientoPendiente->update([
+                    'fecha_recepcion' => $fechaRecepcion,
+                ]);
+
+                $movimientoPendiente->documento()->update([
+                    'recibido' => 'recibido',
+                ]);
+            });
+        } catch (Throwable $exception) {
+            $this->logDatabaseError('Error de base de datos al recibir documento al visualizar', $exception, [
+                'movimiento_id' => $movimientoPendiente->id_movimiento,
+                'documento_id' => $movimientoPendiente->documento_id,
+                'de_area_id' => $movimientoPendiente->de_area_id,
+                'a_area_id' => $movimientoPendiente->a_area_id,
+                'recibido_por' => $user->id_user,
+            ]);
+
+            throw $exception;
+        }
+
+        $documento->setAttribute('recibido', 'recibido');
     }
 
     public function update(UpdateDocumentoRequest $request, int $documento): RedirectResponse
     {
         $documento = Documento::query()->findOrFail($documento);
 
-        $this->ensureCanManageDocumento($request, $documento);
+        $this->ensureCanEditar($request, $documento);
 
         $data = $request->safe()->except(['archivo']);
 
         if ($request->hasFile('archivo')) {
             $archivoPath = $this->storeArchivoConDocumentoId($request->file('archivo'), $documento);
             $data['archivo'] = $archivoPath;
-            // Never keep stale OCR from a previous file when replacing the document.
             $data['contenido_ocr'] = null;
-
-            try {
-                $ocrText = $this->ocrService->extractText(storage_path('app/public/'.$archivoPath));
-
-                $data['contenido_ocr'] = $ocrText !== '' ? $ocrText : null;
-            } catch (Throwable $exception) {
-                report($exception);
-            }
         }
 
-        $documento->update($data);
+        try {
+            $documento->update($data);
+        } catch (QueryException $exception) {
+            $this->logDatabaseError('Error de base de datos al actualizar documento', $exception, [
+                'id_documento' => $documento->id_documento,
+                'user_id' => $documento->user_id,
+                'area_actual_id' => $documento->area_actual_id,
+            ]);
+
+            throw $exception;
+        }
+
+        if (isset($archivoPath)) {
+            ProcesarOcrDocumentoJob::dispatch($documento->id_documento, $archivoPath);
+        }
 
         return to_route('user.documentos.show', $documento->id_documento);
     }
@@ -211,29 +303,48 @@ class DocumentoController extends Controller
     {
         $user = $request->user();
 
-        $documento = Documento::create([
-            ...$request->safe()->except(['archivo', 'recibido']),
-            'archivo' => 'documentos/tmp/'.$request->file('archivo')->hashName(),
-            'user_id' => $user->id_user,
-            'area_actual_id' => $user->area_id,
-            'recibido' => 'subido',
+        try {
+            $documento = Documento::create([
+                ...$request->safe()->except(['archivo', 'recibido']),
+                'archivo' => 'documentos/tmp/'.$request->file('archivo')->hashName(),
+                'user_id' => $user->id_user,
+                'area_actual_id' => $user->area_id,
+                'area_creadora_id' => $user->area_id,
+            ]);
+        } catch (QueryException $exception) {
+            $this->logDatabaseError('Error de base de datos al crear documento', $exception, [
+                'user_id' => $user->id_user,
+                'area_actual_id' => $user->area_id,
+                'numero_oficio' => $request->input('numero_oficio'),
+            ]);
+
+            throw $exception;
+        }
+
+        Log::channel('documentos')->info('Documento creado', [
+            'id_documento' => $documento->id_documento,
+            'user_id' => $documento->user_id,
+            'area_actual_id' => $documento->area_actual_id,
         ]);
 
         $archivoPath = $this->storeArchivoConDocumentoId($request->file('archivo'), $documento);
 
-        $documento->update([
-            'archivo' => $archivoPath,
-        ]);
-
         try {
-            $ocrText = $this->ocrService->extractText(storage_path('app/public/'.$archivoPath));
-
             $documento->update([
-                'contenido_ocr' => $ocrText !== '' ? $ocrText : null,
+                'archivo' => $archivoPath,
             ]);
-        } catch (Throwable $exception) {
-            report($exception);
+        } catch (QueryException $exception) {
+            $this->logDatabaseError('Error de base de datos al actualizar archivo de documento', $exception, [
+                'id_documento' => $documento->id_documento,
+                'user_id' => $documento->user_id,
+                'area_actual_id' => $documento->area_actual_id,
+                'archivo' => $archivoPath,
+            ]);
+
+            throw $exception;
         }
+
+        ProcesarOcrDocumentoJob::dispatch($documento->id_documento, $archivoPath);
 
         return to_route('user.documentos.index');
     }
@@ -242,15 +353,48 @@ class DocumentoController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user !== null && $user->rol === 'user', 403);
+        abort_unless($user !== null && in_array($user->rol, ['user', 'admin'], true), 403);
 
         $documento = Documento::query()
-            ->where('user_id', $user->id_user)
+            ->when(
+                $user->rol === 'user',
+                fn (Builder $query) => $query->where('user_id', $user->id_user),
+            )
             ->findOrFail($documento);
+
+        $hasDependencies = $documento->movimientos()->exists()
+            || $documento->documentosHijos()->exists();
+
+        if ($hasDependencies) {
+            $reason = $this->buildDocumentoDeleteReason($documento);
+
+            return back()->withErrors([
+                'documento' => $reason,
+            ]);
+        }
 
         $documento->delete();
 
         return to_route('user.documentos.index')->with('success', 'El oficio fue eliminado correctamente.');
+    }
+
+    private function buildDocumentoDeleteReason(Documento $documento): string
+    {
+        $reasons = [];
+
+        if ($documento->movimientos()->exists()) {
+            $reasons[] = 'movimientos asociados';
+        }
+
+        if ($documento->documentosHijos()->exists()) {
+            $reasons[] = 'documentos hijos asociados';
+        }
+
+        $details = count($reasons) === 1
+            ? $reasons[0]
+            : implode(' y ', $reasons);
+
+        return "No se puede eliminar este oficio porque tiene {$details}.";
     }
 
     public function deletedIndex(Request $request): Response
@@ -288,6 +432,7 @@ class DocumentoController extends Controller
                 'tipo',
                 'palabra_clave',
                 'recibido',
+                'area_creadora_id',
                 'user_id',
                 'deleted_at',
             ])
@@ -298,7 +443,7 @@ class DocumentoController extends Controller
             'filters' => $filters,
             'remitentes' => Remitente::query()
                 ->where('estado', true)
-                ->orderBy('nombre')
+                ->orderBy('id_remitente')
                 ->get(['id_remitente', 'nombre']),
         ]);
     }
@@ -328,7 +473,24 @@ class DocumentoController extends Controller
         return $finalPath;
     }
 
-    private function ensureCanManageDocumento(Request $request, Documento $documento): void
+    private function ensureCanVer(Request $request, Documento $documento): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user !== null
+            && (
+                $user->rol === 'admin'
+                || $user->rol === 'consultor'
+                || $documento->user_id === $user->id_user
+                || $documento->area_actual_id === $user->area_id
+                || $documento->area_creadora_id === $user->area_id
+            ),
+            403
+        );
+    }
+
+    private function ensureCanEditar(Request $request, Documento $documento): void
     {
         $user = $request->user();
 
@@ -337,9 +499,31 @@ class DocumentoController extends Controller
             && (
                 $user->rol === 'admin'
                 || $documento->user_id === $user->id_user
+            ),
+            403
+        );
+    }
+
+    private function ensurePuedeEnviar(Request $request, Documento $documento): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user !== null
+            && (
+                $user->rol === 'admin'
                 || $documento->area_actual_id === $user->area_id
             ),
             403
         );
+    }
+
+    private function logDatabaseError(string $message, Throwable $exception, array $context): void
+    {
+        Log::channel('errores')->critical($message, [
+            ...$context,
+            'exception_class' => $exception::class,
+            'exception_message' => $exception->getMessage(),
+        ]);
     }
 }

@@ -1,20 +1,26 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    ArrowRight,
+    Calendar,
+    FileText,
+    Lock,
+    MessageSquare,
+    Reply,
+    Send,
+    Tag,
+    Upload,
+    User,
+} from 'lucide-react';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { storeRespuesta } from '@/actions/App/Http/Controllers/User/MovimientoController';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProcessingOverlay } from '@/components/ui/processing-overlay';
 import { Progress } from '@/components/ui/progress';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 type Remitente = {
@@ -32,6 +38,7 @@ type MovimientoDetalle = {
         numero_oficio: string | null;
         palabra_clave: string;
         tipo: string;
+        remitente_id: number | null;
     } | null;
 };
 
@@ -52,181 +59,277 @@ type FormData = {
     comentario_envio: string;
 };
 
-export default function Responder({ movimiento, remitentes, tipos }: Props) {
+const todayDate = (): string => {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
+const formatDateDisplay = (iso: string): string => {
+    const [y, m, d] = iso.split('-');
+    const date = new Date(Number(y), Number(m) - 1, Number(d));
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+function SectionPanel({
+    title,
+    icon: Icon,
+    children,
+    badge,
+}: {
+    title: string;
+    icon: React.ElementType;
+    children: React.ReactNode;
+    badge?: React.ReactNode;
+}) {
+    return (
+        <div className="rounded-xl border bg-card overflow-hidden">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-muted/20">
+                <div className="flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm font-medium">{title}</span>
+                </div>
+                {badge}
+            </div>
+            <div className="px-4 py-4">{children}</div>
+        </div>
+    );
+}
+
+function InfoRow({ icon: Icon, label, children }: {
+    icon: React.ElementType;
+    label: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0">
+            <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                <Icon className="h-3 w-3 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                <div className="text-sm text-foreground">{children}</div>
+            </div>
+        </div>
+    );
+}
+
+export default function Responder({ movimiento, remitentes }: Props) {
+    const remitenteNombre =
+        remitentes.find((r) => r.id_remitente === movimiento.documento?.remitente_id)?.nombre ?? '-';
+
     const { data, setData, post, processing, progress, errors } = useForm<FormData>({
         movimiento_id: movimiento.id_movimiento,
         numero_oficio: '',
-        fecha_oficio: '',
-        remitente_id: '',
-        tipo: movimiento.documento?.tipo ?? '',
+        fecha_oficio: todayDate(),
+        remitente_id: String(movimiento.documento?.remitente_id ?? ''),
+        tipo: 'interno',
         palabra_clave: movimiento.documento?.palabra_clave ?? '',
         archivo: null,
         comentario_envio: movimiento.comentario ?? '',
     });
 
-    const handleFile = (file: File | null): void => {
-        if (!file) {
-            return;
-        }
+    const isServerProcessing = processing && Boolean(progress) && (progress?.percentage ?? 0) >= 100;
 
+    const handleFile = (file: File | null): void => {
+        if (!file) return;
         setData('archivo', file);
     };
 
-    const onSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+    const onSubmit = (event: { preventDefault(): void }): void => {
         event.preventDefault();
-
         post(storeRespuesta.url(), {
             forceFormData: true,
             preserveScroll: true,
+            onSuccess: () => {
+                router.reload({ only: ['pendingMovimientosCount'] });
+            },
         });
     };
+
+    const oficioPadreLabel = movimiento.documento?.numero_oficio
+        ?? `#${movimiento.documento?.id_documento ?? '-'}`;
 
     return (
         <>
             <Head title="Responder oficio" />
+            <ProcessingOverlay
+                show={processing}
+                message={isServerProcessing ? 'Enviando documento...' : 'Subiendo archivo...'}
+            />
 
-            <div className="mx-auto w-full max-w-4xl space-y-6 p-4 md:p-6">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-semibold">Responder oficio</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Crea el oficio de respuesta y se enviara automaticamente al area de origen.
+            <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 space-y-5">
+
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                    <Button asChild variant="ghost" size="icon" className="rounded-full shrink-0">
+                        <Link href={DocumentoController.index.url()}>
+                            <ArrowLeft className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-xl font-semibold leading-tight">Responder oficio</h1>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Respondiendo a <span className="font-medium text-foreground">{oficioPadreLabel}</span>
                         </p>
                     </div>
-                    <Button asChild variant="outline">
-                        <Link href={DocumentoController.index.url()}>Volver a documentos</Link>
-                    </Button>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Contexto del movimiento</CardTitle>
-                        <CardDescription>
-                            Flujo actual: {movimiento.a_area?.nombre ?? '-'} {'->'} {movimiento.de_area?.nombre ?? '-'}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">Oficio base: {movimiento.documento?.numero_oficio ?? movimiento.documento?.id_documento ?? '-'}</Badge>
-                            <Badge variant="secondary">Este nuevo oficio quedara enlazado como respuesta</Badge>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Flujo del movimiento */}
+                <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
+                    <Reply className="h-4 w-4 text-[var(--primary)]/80 shrink-0" />
+                    <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
+                        <span className="text-[var(--secondary-foreground)]/80 ">{movimiento.a_area?.nombre ?? '-'}</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-[var(--primary)]/80 shrink-0" />
+                        <span className="text-[var(--secondary-foreground)]/80 ">{movimiento.de_area?.nombre ?? '-'}</span>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[11px] border-primary/30 bg-primary/10 text-primary">
+                            Oficio base: {oficioPadreLabel}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[11px]">
+                            Se enlazará como respuesta
+                        </Badge>
+                    </div>
+                </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Nuevo oficio de respuesta</CardTitle>
-                        <CardDescription>
-                            Usa el mismo comentario del envio original para enlazar la respuesta con el mismo motivo.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form className="space-y-6" onSubmit={onSubmit}>
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="numero_oficio">Numero de oficio</Label>
+                {/* Grid principal */}
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-5 items-start">
+
+                    {/* Columna izquierda — formulario */}
+                    <form className="space-y-4" onSubmit={onSubmit}>
+
+                        {/* Campos editables */}
+                        <SectionPanel title="Datos del oficio" icon={FileText}>
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="numero_oficio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                        Número de oficio <span className="normal-case text-muted-foreground/60">(opcional)</span>
+                                    </Label>
                                     <Input
                                         id="numero_oficio"
                                         value={data.numero_oficio}
-                                        onChange={(event) => setData('numero_oficio', event.target.value)}
-                                        placeholder="OF-2026-010"
+                                        onChange={(e) => setData('numero_oficio', e.target.value)}
+                                        placeholder="Ej: OF-2026-042"
+                                        className="h-9"
                                     />
                                     <InputError message={errors.numero_oficio} />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="fecha_oficio">Fecha de oficio <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        id="fecha_oficio"
-                                        type="date"
-                                        value={data.fecha_oficio}
-                                        onChange={(event) => setData('fecha_oficio', event.target.value)}
-                                    />
-                                    <InputError message={errors.fecha_oficio} />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Remitente <span className="text-red-500">*</span></Label>
-                                    <Select value={String(data.remitente_id || '')} onValueChange={(value) => setData('remitente_id', value)}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Selecciona remitente" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {remitentes.map((remitente) => (
-                                                <SelectItem key={remitente.id_remitente} value={String(remitente.id_remitente)}>
-                                                    {remitente.nombre}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.remitente_id} />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Tipo <span className="text-red-500">*</span></Label>
-                                    <Select value={data.tipo} onValueChange={(value) => setData('tipo', value)}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Selecciona tipo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {tipos.map((tipo) => (
-                                                <SelectItem key={tipo} value={tipo}>
-                                                    {tipo}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.tipo} />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="palabra_clave">Palabra clave <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        id="palabra_clave"
-                                        value={data.palabra_clave}
-                                        onChange={(event) => setData('palabra_clave', event.target.value)}
-                                        placeholder="Respuesta"
-                                    />
-                                    <InputError message={errors.palabra_clave} />
-                                </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="comentario_envio">Comentario / motivo <span className="text-red-500">*</span></Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="comentario_envio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                        Comentario / motivo <span className="text-red-500">*</span>
+                                    </Label>
                                     <Textarea
                                         id="comentario_envio"
                                         value={data.comentario_envio}
-                                        onChange={(event) => setData('comentario_envio', event.target.value)}
-                                        placeholder="Escribe el mismo motivo del movimiento original..."
+                                        onChange={(e) => setData('comentario_envio', e.target.value)}
+                                        placeholder="Describe el motivo de esta respuesta..."
+                                        rows={4}
+                                        className="resize-none"
                                         required
                                     />
                                     <InputError message={errors.comentario_envio} />
                                 </div>
                             </div>
+                        </SectionPanel>
 
-                            <div className="space-y-2">
-                                <Label>Archivo PDF <span className="text-red-500">*</span></Label>
-                                <Input
+                        {/* Archivo */}
+                        <SectionPanel title="Documento adjunto" icon={Upload}>
+                            <div className="space-y-3">
+                                <div
+                                    className="border-2 border-dashed border-border rounded-lg px-4 py-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors"
+                                    onClick={() => document.getElementById('archivo-input')?.click()}
+                                >
+                                    <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                                    <p className="text-sm text-muted-foreground">
+                                        {data.archivo
+                                            ? <span className="font-medium text-foreground">{data.archivo.name}</span>
+                                            : <>Haz clic para seleccionar o arrastra el archivo</>
+                                        }
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/60 mt-1">Solo PDF · Máximo 4 MB</p>
+                                </div>
+                                <input
+                                    id="archivo-input"
                                     type="file"
                                     accept=".pdf,application/pdf"
-                                    onChange={(event) => handleFile(event.target.files?.[0] || null)}
+                                    className="hidden"
+                                    onChange={(e) => handleFile(e.target.files?.[0] || null)}
                                 />
-                                <p className="text-xs text-muted-foreground">Solo PDF, maximo 4 MB.</p>
                                 <InputError message={errors.archivo} />
+
+                                {progress && (
+                                    <div className="space-y-1.5">
+                                        <Progress value={progress.percentage} className="h-1.5" />
+                                        <p className="text-xs text-muted-foreground text-right">{progress.percentage}%</p>
+                                    </div>
+                                )}
                             </div>
+                        </SectionPanel>
 
-                            {progress ? (
-                                <div className="space-y-2">
-                                    <Progress value={progress.percentage} />
-                                    <p className="text-xs text-muted-foreground">Subiendo archivo: {progress.percentage}%</p>
-                                </div>
-                            ) : null}
+                        <Button
+                            type="submit"
+                            disabled={processing}
+                            className="w-full bg-blue-600 hover:bg-[var(--secondary-foreground)]/80 text-white h-10"
+                        >
+                            {processing ? (
+                                <span className="flex items-center gap-2">
+                                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                    {isServerProcessing ? 'Enviando...' : 'Subiendo...'}
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <Send className="h-3.5 w-3.5" />
+                                    Crear y enviar respuesta
+                                </span>
+                            )}
+                        </Button>
+                    </form>
 
-                            <Button type="submit" disabled={processing}>
-                                {processing ? 'Enviando respuesta...' : 'Crear y enviar respuesta'}
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
+                    {/* Columna derecha — campos automáticos + contexto */}
+                    <div className="space-y-4">
+
+                        {/* Campos automáticos */}
+                        <SectionPanel
+                            title="Campos automáticos"
+                            icon={Lock}
+                            badge={
+                                <Badge variant="outline" className="text-[10px] border-[--border] bg-[var(--card)] text-[var(--text)]">
+                                    No editables
+                                </Badge>
+                            }
+                        >
+                            <div className="-mx-0">
+                                <InfoRow icon={Calendar} label="Fecha del oficio">
+                                    {formatDateDisplay(data.fecha_oficio)}
+                                </InfoRow>
+                                <InfoRow icon={User} label="Remitente">
+                                    {remitenteNombre}
+                                </InfoRow>
+                                <InfoRow icon={FileText} label="Tipo">
+                                    <Badge variant="outline" className="text-xs border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
+                                        Interno
+                                    </Badge>
+                                </InfoRow>
+                                <InfoRow icon={Tag} label="Palabra clave">
+                                    {data.palabra_clave || '-'}
+                                </InfoRow>
+                            </div>
+                        </SectionPanel>
+
+                        {/* Contexto del movimiento original */}
+                        {movimiento.comentario && (
+                            <SectionPanel title="Motivo original" icon={MessageSquare}>
+                                <p className="text-sm text-muted-foreground italic leading-relaxed">
+                                    "{movimiento.comentario}"
+                                </p>
+                            </SectionPanel>
+                        )}
+
+                    </div>
+                </div>
             </div>
         </>
     );
@@ -234,13 +337,7 @@ export default function Responder({ movimiento, remitentes, tipos }: Props) {
 
 Responder.layout = {
     breadcrumbs: [
-        {
-            title: 'Mis documentos',
-            href: DocumentoController.index.url(),
-        },
-        {
-            title: 'Responder oficio',
-            href: '#',
-        },
+        { title: 'Mis documentos', href: DocumentoController.index.url() },
+        { title: 'Responder oficio', href: '#' },
     ],
 };
