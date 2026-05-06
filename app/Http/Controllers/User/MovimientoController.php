@@ -40,7 +40,9 @@ class MovimientoController extends Controller
         $activosPage  = max((int) $request->input('activos_page', 1), 1);
         $cerradosPage = max((int) $request->input('cerrados_page', 1), 1);
         $vencidosPage = max((int) $request->input('vencidos_page', 1), 1);
-        $busqueda     = trim((string) $request->input('busqueda', ''));
+        $busquedaActivos  = trim((string) $request->input('busqueda_activos', ''));
+        $busquedaCerrados = trim((string) $request->input('busqueda_cerrados', ''));
+        $busquedaVencidos = trim((string) $request->input('busqueda_vencidos', ''));
 
         $esDestinatario = static function (Movimiento $movimiento) use ($user): bool {
             return $movimiento->destinatario_user_id === null
@@ -92,7 +94,7 @@ class MovimientoController extends Controller
                 $expedienteId        = $grupo->first()?->expediente_id;
                 $movimientosOrdenados = $grupo->sortByDesc('fecha_envio')->values();
 
-                $tieneRespuesta   = $movimientosOrdenados->filter(fn(Movimiento $m): bool => $m->documento?->movimiento_origen_id !== null)->isNotEmpty();
+                $tieneRespuesta   = $movimientosOrdenados->filter(fn(Movimiento $m): bool => $m->documento?->movimiento_origen_id !== null || $m->respuesta_comentario !== null)->isNotEmpty();
                 $totalMovimientos = $movimientosOrdenados->count();
                 $salidas          = $movimientosOrdenados->where('de_area_id', $user->area_id)->count();
                 $entradas         = $movimientosOrdenados->filter(fn(Movimiento $m): bool =>
@@ -106,7 +108,7 @@ class MovimientoController extends Controller
 
                 $maxPorGrupo     = 2;
                 $movimientosVista = $movimientosOrdenados->take($maxPorGrupo)->map(function (Movimiento $movimiento) use ($user, $esDestinatario): array {
-                    $respuestaEnviada     = $movimiento->documentosGenerados->isNotEmpty();
+                    $respuestaEnviada     = $movimiento->documentosGenerados->isNotEmpty() || $movimiento->respuesta_comentario !== null;
                     $esMovimientoEntrante = $movimiento->a_area_id === $user->area_id && $esDestinatario($movimiento);
                     $diasLaborales        = $movimiento->fecha_envio
                         ? $this->calcularDiasLaborales(\Carbon\Carbon::parse($movimiento->fecha_envio), now())
@@ -169,21 +171,27 @@ class MovimientoController extends Controller
             ->sortByDesc('ultima_fecha_envio')
             ->values();
 
-        if ($busqueda !== '') {
-            $term             = mb_strtolower($busqueda);
-            $todosExpedientes = $todosExpedientes->filter(
-                fn(array $e): bool => str_contains(mb_strtolower((string) ($e['asunto_resumen'] ?? '')), $term)
-            )->values();
-        }
-
         // Separar en tres categorías independientes
         $activosCollection  = $todosExpedientes->filter(fn($e) => $e['estado'] === 'abierto' && !collect($e['movimientos'])->contains('bloqueado', true))->values();
         $vencidosCollection = $todosExpedientes->filter(fn($e) => $e['estado'] === 'abierto' && collect($e['movimientos'])->contains('bloqueado', true))->values();
         $cerradosCollection = $todosExpedientes->filter(fn($e) => $e['estado'] === 'cerrado')->values();
 
-        $buildPaginator = function (\Illuminate\Support\Collection $col, int $page, string $pageParam) use ($perPage, $request, $busqueda): \Illuminate\Pagination\LengthAwarePaginator {
+        // Aplicar búsqueda por pestaña de forma independiente
+        $filtrarPorBusqueda = fn(\Illuminate\Support\Collection $col, string $term): \Illuminate\Support\Collection =>
+            $col->filter(fn(array $e): bool => str_contains(mb_strtolower((string) ($e['asunto_resumen'] ?? '')), mb_strtolower($term)))->values();
+
+        if ($busquedaActivos  !== '') $activosCollection  = $filtrarPorBusqueda($activosCollection, $busquedaActivos);
+        if ($busquedaCerrados !== '') $cerradosCollection = $filtrarPorBusqueda($cerradosCollection, $busquedaCerrados);
+        if ($busquedaVencidos !== '') $vencidosCollection = $filtrarPorBusqueda($vencidosCollection, $busquedaVencidos);
+
+        $buildPaginator = function (\Illuminate\Support\Collection $col, int $page, string $pageParam) use ($perPage, $request, $busquedaActivos, $busquedaCerrados, $busquedaVencidos): \Illuminate\Pagination\LengthAwarePaginator {
             $extra = array_filter(
-                array_merge($request->except([$pageParam]), ['per_page' => $perPage, 'busqueda' => $busqueda]),
+                array_merge($request->except([$pageParam]), [
+                    'per_page'         => $perPage,
+                    'busqueda_activos'  => $busquedaActivos  ?: null,
+                    'busqueda_cerrados' => $busquedaCerrados ?: null,
+                    'busqueda_vencidos' => $busquedaVencidos ?: null,
+                ]),
                 fn($v): bool => $v !== null && $v !== '',
             );
 
@@ -198,9 +206,19 @@ class MovimientoController extends Controller
 
         return Inertia::render('user/movimientos/index', [
             'expedientesActivos'  => $buildPaginator($activosCollection, $activosPage, 'activos_page'),
-            'expedientesCerrados' => Inertia::optional(fn() => $buildPaginator($cerradosCollection, $cerradosPage, 'cerrados_page')),
-            'expedientesVencidos' => Inertia::optional(fn() => $buildPaginator($vencidosCollection, $vencidosPage, 'vencidos_page')),
-            'filters'  => ['busqueda' => $busqueda, 'per_page' => (string) $perPage],
+            'expedientesCerrados' => ($busquedaCerrados !== '' || $request->input('tab') === 'cerrados')
+                ? $buildPaginator($cerradosCollection, $cerradosPage, 'cerrados_page')
+                : Inertia::optional(fn() => $buildPaginator($cerradosCollection, $cerradosPage, 'cerrados_page')),
+            'expedientesVencidos' => ($busquedaVencidos !== '' || $request->input('tab') === 'vencidos')
+                ? $buildPaginator($vencidosCollection, $vencidosPage, 'vencidos_page')
+                : Inertia::optional(fn() => $buildPaginator($vencidosCollection, $vencidosPage, 'vencidos_page')),
+            'filters'  => [
+                'busqueda_activos'  => $busquedaActivos,
+                'busqueda_cerrados' => $busquedaCerrados,
+                'busqueda_vencidos' => $busquedaVencidos,
+                'per_page'          => (string) $perPage,
+                'tab'               => $request->input('tab', ''),
+            ],
             'resumen'  => [
                 'total_movimientos'     => $movimientos->count(),
                 'expedientes_activos'   => $activosCollection->count(),
@@ -273,9 +291,11 @@ class MovimientoController extends Controller
                     $month = $now->format('m');
 
                     $count = Expediente::query()
-                        ->lockForUpdate()
+                        ->select('id_expediente')
                         ->whereYear('fecha_inicio', $year)
                         ->whereMonth('fecha_inicio', $month)
+                        ->lockForUpdate()
+                        ->get()
                         ->count();
 
                     $codigo = 'EXP-' . $year . $month . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
@@ -595,7 +615,6 @@ class MovimientoController extends Controller
             403
         );
 
-        // Validar que el expediente no esté cerrado
         if ($movimiento->expediente_id) {
             $expediente = Expediente::find($movimiento->expediente_id);
             if ($expediente && $expediente->estado === 'cerrado') {
@@ -605,6 +624,115 @@ class MovimientoController extends Controller
             }
         }
 
+        if ($request->boolean('solo_comentario')) {
+            return $this->storeRespuestaComentario($request, $user, $movimiento);
+        }
+
+        return $this->storeRespuestaDocumento($request, $user, $movimiento);
+    }
+
+    private function storeRespuestaComentario(
+        StoreRespuestaOficioRequest $request,
+        \App\Models\User $user,
+        Movimiento $movimiento,
+    ): RedirectResponse {
+        $fechaRecepcionOriginal = null;
+        $movimientoRespuestaId  = null;
+
+        try {
+            DB::transaction(function () use ($request, $user, $movimiento, &$fechaRecepcionOriginal, &$movimientoRespuestaId): void {
+                if ($movimiento->fecha_recepcion === null) {
+                    $fechaRecepcionOriginal = now();
+
+                    $movimiento->update([
+                        'fecha_recepcion' => $fechaRecepcionOriginal,
+                    ]);
+
+                    $movimiento->documento()->update([
+                        'recibido' => 'recibido',
+                    ]);
+                }
+
+                // Marcar el movimiento original como respondido por comentario
+                $movimiento->update([
+                    'respuesta_comentario' => $request->input('comentario_envio'),
+                ]);
+
+                // Crear el movimiento de respuesta (B→A) referenciando el mismo documento
+                $movimientoRespuesta = Movimiento::create([
+                    'documento_id'         => $movimiento->documento_id,
+                    'de_area_id'           => $user->area_id,
+                    'a_area_id'            => $movimiento->de_area_id,
+                    'destinatario_user_id' => $movimiento->enviado_por,
+                    'enviado_por'          => $user->id_user,
+                    'comentario'           => $request->input('comentario_envio'),
+                    'fecha_envio'          => now(),
+                    'expediente_id'        => $movimiento->expediente_id,
+                ]);
+
+                $movimientoRespuestaId = $movimientoRespuesta->id_movimiento;
+            });
+        } catch (Throwable $exception) {
+            $this->logDatabaseError('Error al guardar respuesta por comentario', $exception, [
+                'movimiento_id' => $movimiento->id_movimiento,
+                'user_id'       => $user->id_user,
+            ]);
+
+            throw $exception;
+        }
+
+        Log::channel('movimientos')->info('Movimiento respondido con comentario', [
+            'id_movimiento'          => $movimiento->id_movimiento,
+            'movimiento_respuesta_id' => $movimientoRespuestaId,
+            'documento_id'           => $movimiento->documento_id,
+            'user_id'                => $user->id_user,
+        ]);
+
+        if ($fechaRecepcionOriginal !== null) {
+            Log::channel('movimientos')->info('Documento recibido automaticamente al responder con comentario', [
+                'id_movimiento'  => $movimiento->id_movimiento,
+                'fecha_recepcion' => $fechaRecepcionOriginal->toDateTimeString(),
+            ]);
+        }
+
+        if ($movimientoRespuestaId !== null) {
+            $movimientoRespuesta = Movimiento::query()
+                ->with([
+                    'deArea:id_area,nombre',
+                    'aArea:id_area,nombre',
+                    'destinatario:id_user,nombre,apellido',
+                ])
+                ->find($movimientoRespuestaId);
+
+            if ($movimientoRespuesta !== null) {
+                $this->dispatchMovimientoActualizado(
+                    'respondido',
+                    $this->buildBroadcastPayload($movimientoRespuesta, $user),
+                    [$movimientoRespuesta->de_area_id, $movimientoRespuesta->a_area_id],
+                );
+
+                $documento = Documento::query()->find($movimiento->documento_id);
+
+                if ($documento !== null) {
+                    $this->notificarDestinatarios(
+                        $documento,
+                        $movimientoRespuesta,
+                        $movimiento->de_area_id,
+                        $movimiento->enviado_por,
+                    );
+                }
+            }
+        }
+
+        return to_route('user.documentos.show', $movimiento->documento_id)
+            ->with('success', 'La respuesta fue registrada correctamente.');
+    }
+
+    private function storeRespuestaDocumento(
+        StoreRespuestaOficioRequest $request,
+        \App\Models\User $user,
+        Movimiento $movimiento,
+    ): RedirectResponse {
         $movimientoRespuestaId = null;
         $fechaRecepcionOriginal = null;
 
@@ -820,7 +948,7 @@ class MovimientoController extends Controller
             $esMovimientoEntrante = $movimiento->a_area_id === $user->area_id && $esDestinatario;
             $hiloId = $movimiento->documento?->hilo_id;
             $movimientoOrigen = $movimiento->documento?->movimientoOrigen;
-            $respuestaEnviada = $movimiento->documentosGenerados->isNotEmpty();
+            $respuestaEnviada = $movimiento->documentosGenerados->isNotEmpty() || $movimiento->respuesta_comentario !== null;
             $diasLaborales = $movimiento->fecha_envio
                 ? $this->calcularDiasLaborales(\Carbon\Carbon::parse($movimiento->fecha_envio), now())
                 : 0;

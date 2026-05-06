@@ -441,12 +441,14 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                         {/* ── Slide 1: Áreas activas ── */}
                         <CarouselItem>
                             <div className="overflow-hidden rounded-xl border bg-card">
+
                                 {/* Toolbar */}
-                                <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+                                <div className="flex items-center justify-between gap-3 bg-[var(--card-background)] px-4 py-3">
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-muted-foreground">
                                             Mostrar
                                         </span>
+                                        <div className='px-4'>
                                         <Select
                                             value={perPage}
                                             onValueChange={changePerPage}
@@ -460,6 +462,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                                 <SelectItem value="10">10</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        </div>
                                     </div>
                                     <Pagination className="mx-0 w-auto">
                                         <PaginationContent>
@@ -513,17 +516,19 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                     </Pagination>
                                 </div>
 
+                                <Separator />
+
                                 {/* Tabla activas */}
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                            <TableHead className="w-20 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                        <TableRow className="bg-[var(--card-background)]">
+                                            <TableHead className=" px-10 w-20 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 ID
                                             </TableHead>
                                             <TableHead className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 Nombre
                                             </TableHead>
-                                            <TableHead className="w-40 text-right text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                            <TableHead className="w-40 text-center text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 Acciones
                                             </TableHead>
                                         </TableRow>
@@ -535,7 +540,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                                     key={area.id_area}
                                                     className="hover:bg-muted/20"
                                                 >
-                                                    <TableCell className="font-mono text-xs text-muted-foreground">
+                                                    <TableCell className="px-10 font-mono text-xs text-muted-foreground">
                                                         #{area.id_area}
                                                     </TableCell>
                                                     <TableCell className="text-[12px] font-medium">
@@ -599,7 +604,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                 </Table>
 
                                 {Object.keys(deleteErrors).length > 0 && (
-                                    <div className="border-t px-4 py-3">
+                                    <div className=" px-4 py-3">
                                         <Alert variant="destructive" className="py-2">
                                             <AlertTriangle className="h-4 w-4" />
                                             <AlertTitle className="text-[12px]">
@@ -616,9 +621,9 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
 
                         {/* ── Slide 2: Áreas eliminadas ── */}
                         <CarouselItem>
-                            <div className="overflow-hidden rounded-xl border bg-card">
+                            <div className="overflow-hidden rounded-xl bg-card">
                                 {/* Toolbar eliminadas */}
-                                <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+                                <div className="flex items-center justify-between gap-3 bg-muted/30 px-4 py-3">
                                     <div className="flex items-center gap-2">
                                         <History className="h-3.5 w-3.5 text-muted-foreground" />
                                         <span className="text-[12px] font-medium text-muted-foreground">
@@ -850,7 +855,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                                     setDeleteConfirmation(e.target.value)
                                                 }
                                                 placeholder={areaToDelete.nombre}
-                                                className="border-destructive focus-visible:ring-destructive/30"
+                                                className="focus-visible:ring-destructive/30"
                                             />
                                         </div>
                                     </>

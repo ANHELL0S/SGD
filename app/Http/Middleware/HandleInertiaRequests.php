@@ -84,12 +84,14 @@ class HandleInertiaRequests extends Middleware
                             ->whereNotNull('conversacion_cerrada_at');
                     })
                     ->whereDoesntHave('documentosGenerados')
+                    ->whereNull('respuesta_comentario')
                     ->where('fecha_envio', '>=', now()->subDays(12))
                     ->count()
                 : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                'retry_after' => $request->session()->get('retry_after'),
             ],
         ];
     }

@@ -61,6 +61,27 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Quitar el fondo de autocompletado en Firefox y Chrome */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+input:autofill {
+    /* Esto reemplaza el color de fondo con una sombra interna del color de tu input */
+    -webkit-box-shadow: 0 0 0 1000px #1B1B1D inset !important;
+    /* Esto mantiene el color del texto blanco o el que prefieras */
+    -webkit-text-fill-color: #ffffff !important;
+    /* Esto quita el borde que a veces pone Firefox */
+    border: 1px solid #262626 !important;
+}
+
+
+/* Específico para Firefox si lo anterior no basta */
+input:filter(autofill) {
+    background-color: transparent !important;
+}
+
+
 :root {
     /* Mantenemos tus fondos originales */
     --background: oklch(1 0 0);
@@ -134,11 +155,11 @@
     --ring: oklch(0.439 0 0);
 
     /* Colores Charts Dark */
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.194 149.214);
-    --chart-5: oklch(0.645 0.246 16.439);
+    --chart-1: oklch(0.32 0.12 250); /* Azul */
+    --chart-2: oklch(0.88 0.18 90);  /* Amarillo */
+    --chart-3: oklch(68.801% 0.19866 37.93);  /* Rojo */
+    --chart-4: oklch(0.64 0.17 155);
+    --chart-5: oklch(0.769 0.188 70.08);
 
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
@@ -173,6 +194,24 @@
 ::view-transition-old(root) {
     animation: none;
     z-index: -1;
+}
+
+@keyframes accordion-down {
+    from { height: 0; opacity: 0; }
+    to   { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); opacity: 1; }
+    to   { height: 0; opacity: 0; }
+}
+
+.animate-accordion-down {
+    animation: accordion-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-accordion-up {
+    animation: accordion-up 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes slide-in-up {

@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Search } from 'lucide-react';
+import { Search, Zap } from 'lucide-react';
 import { RotateCcw, Filter } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale'; // Opcional: para fechas en español
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 import {
     Popover,
     PopoverContent,
@@ -72,6 +73,7 @@ type Props = {
     documentos: PaginatedDocumentos;
     remitentes: Remitente[];
     filters: FilterState;
+    busqueda_activa: boolean;
 };
 
 const defaultFilters: FilterState = {
@@ -86,9 +88,10 @@ const defaultFilters: FilterState = {
     per_page: '5',
 };
 
-export default function Index({ documentos, remitentes, filters }: Props) {
+export default function Index({ documentos, remitentes, filters, busqueda_activa }: Props) {
     const [openDesde, setOpenDesde] = useState<boolean>(false);
     const [openHasta, setOpenHasta] = useState<boolean>(false);
+    const [spinKey, setSpinKey] = useState(0);
     const { auth } = usePage().props as {
         auth?: {
             user?: {
@@ -140,6 +143,7 @@ export default function Index({ documentos, remitentes, filters }: Props) {
     };
 
     const clearFilters = () => {
+        setSpinKey(k => k + 1);
         const clearedFilters = {
             ...defaultFilters,
             per_page: data.per_page,
@@ -247,12 +251,18 @@ export default function Index({ documentos, remitentes, filters }: Props) {
                                 <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-primary transition-colors group-focus-within:text-blue-500" />
                                 <Input
                                     id="texto_ocr"
-                                    placeholder="Buscar por contenido OCR..."
+                                    placeholder="Buscar en contenido OCR, número de oficio, asunto... (soporta &quot;frases exactas&quot; y -exclusiones)"
                                     value={data.texto_ocr}
                                     onChange={(e) => handleOcrBusqueda(e.target.value)}
                                     className="h-9 rounded-lg border-border/50 bg-background pl-10 text-[13px] shadow-sm focus-visible:ring-1"
                                 />
                             </div>
+                            {busqueda_activa && (
+                                <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                                    <Zap className="size-3 shrink-0" />
+                                    <span>Resultados ordenados por relevancia — coincidencias en número de oficio y asunto tienen mayor peso</span>
+                                </div>
+                            )}
 
                             {/* Fila de Filtros Compacta */}
                             <div className="flex flex-wrap items-center gap-2">
@@ -431,7 +441,13 @@ export default function Index({ documentos, remitentes, filters }: Props) {
                                         onClick={clearFilters}
                                         className="h-8 w-8 rounded-md p-0 text-muted-foreground hover:bg-muted"
                                     >
-                                        <RotateCcw className="size-3.5" />
+                                        <RotateCcw
+                                            key={spinKey}
+                                            className={cn(
+                                                'size-3.5',
+                                                spinKey > 0 && 'animate-spin [animation-iteration-count:1] [animation-direction:reverse]',
+                                            )}
+                                        />
                                     </Button>
                                     <Button
                                         type="submit"
@@ -457,25 +473,22 @@ export default function Index({ documentos, remitentes, filters }: Props) {
                                     value={data.per_page}
                                     onValueChange={changePerPage}
                                 >
-                                    <SelectTrigger className="!h-8 w-[65px] border-border/50 bg-transparent text-[12px] font-medium shadow-none focus:ring-1">
+                                    <SelectTrigger className="h-8 w-[65px] border-border/50 bg-transparent text-[12px] font-medium shadow-none focus:ring-1">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className=''>
                                         <SelectItem
                                             value="5"
-                                            className="text-[11px]"
                                         >
                                             5
                                         </SelectItem>
                                         <SelectItem
                                             value="7"
-                                            className="text-[11px]"
                                         >
                                             7
                                         </SelectItem>
                                         <SelectItem
                                             value="10"
-                                            className="text-[11px]"
                                         >
                                             10
                                         </SelectItem>

@@ -1,8 +1,8 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     AreaChart, Area,
     BarChart, Bar,
-    PieChart, Pie, Cell,
+    PieChart, Pie,
     XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import {
@@ -11,11 +11,14 @@ import {
     ChartTooltipContent,
     type ChartConfig,
 } from '@/components/ui/chart';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserCheck, FileText, BellDot, ArrowRight } from 'lucide-react';
 import { dashboard } from '@/routes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type Periodo = 'semana' | 'mes' | 'año' | 'todos';
 
 interface Stats {
     usuariosActivos: number;
@@ -43,6 +46,27 @@ interface Props {
     porArea: AreaData[];
     alertasPorNivel: AlertaData[];
     usuariosPendientes: UsuarioPendiente[];
+    periodoSeleccionado: Periodo;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PERIODOS: { key: Periodo; label: string }[] = [
+    { key: 'semana', label: 'Semana' },
+    { key: 'mes',    label: 'Mes'    },
+    { key: 'año',    label: 'Año'    },
+    { key: 'todos',  label: 'Todos'  },
+];
+
+const PERIODO_DESC: Record<Periodo, string> = {
+    semana: 'Esta semana',
+    mes:    'Este mes',
+    año:    'Este año',
+    todos:  'Todo el historial',
+};
+
+function cambiarPeriodo(periodo: Periodo) {
+    router.get(dashboard(), { periodo }, { preserveScroll: true, preserveState: false });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -69,9 +93,16 @@ const alertaConfig = {
     Bloqueado: { label: 'Bloqueado', color: 'hsl(220 10% 55%)' },
 } satisfies ChartConfig;
 
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel, usuariosPendientes }: Props) {
+import { usePage } from '@inertiajs/react';
+
+export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel, usuariosPendientes, periodoSeleccionado }: Props) {
+    // Si el backend no envía periodoSeleccionado, usar 'todos' por defecto
+    const periodo = periodoSeleccionado ?? 'todos';
+    const desc = PERIODO_DESC[periodo];
+
     const statItems = [
         {
             title: 'Usuarios activos',
@@ -92,7 +123,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
         {
             title: 'Documentos en sistema',
             value: stats.totalDocumentos,
-            sub: 'total registrados',
+            sub: `registrados — ${desc.toLowerCase()}`,
             icon: FileText,
             href: '/admin/documentos/eliminados',
             alert: false,
@@ -107,13 +138,36 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
         },
     ];
 
-    const totalAlertas = alertasPorNivel.reduce((s, e) => s + e.total, 0);
+    const totalAlertas = alertasPorNivel.reduce((s: number, e: { total: number }) => s + e.total, 0);
+
+    // Obtener el usuario autenticado desde las props globales de Inertia
+    const { auth } = usePage().props as { auth: { user?: { nombre?: string; apellido?: string; name?: string } } };
+    const nombre = auth?.user?.nombre || auth?.user?.name || '';
+    const apellido = auth?.user?.apellido || '';
 
     return (
         <>
             <Head title="Dashboard" />
 
             <div className="flex flex-col gap-5 p-4 md:p-6">
+                <div className='inline-flex items-start justify-between gap-2'>
+                    <h1 className='text-2xl font-bold'>
+                        Bienvenido de nuevo, {nombre || apellido ? `  ${nombre} ${apellido}` : ''}
+                    </h1>
+                     <div className="flex gap-1 rounded-md border p-0.5">
+                                    {PERIODOS.map(({ key, label }) => (
+                                        <Button
+                                            key={key}
+                                            size="sm"
+                                            variant={periodo === key ? 'default' : 'ghost'}
+                                            onClick={() => cambiarPeriodo(key)}
+                                            className="h-6 px-2 text-xs"
+                                        >
+                                            {label}
+                                        </Button>
+                                    ))}
+                     </div>
+                </div>
 
                 {/* ── Stats strip ───────────────────────────────────── */}
                 <Card className="overflow-hidden py-0">
@@ -147,8 +201,12 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
 
                     <Card className="min-w-0">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Actividad mensual</CardTitle>
-                            <CardDescription className="text-xs">Documentos registrados — últimos 6 meses</CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-sm font-medium">Actividad</CardTitle>
+                                    <CardDescription className="text-xs">{desc}</CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent className="overflow-hidden">
                             <ChartContainer config={mesConfig} className="h-[200px] w-full">
@@ -163,7 +221,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
                                     <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                                     <YAxis tickLine={false} axisLine={false} allowDecimals={false} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                                     <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                                    <Area type="monotone" dataKey="total" stroke="hsl(262 80% 58%)" strokeWidth={2} fill="url(#gradAdmin)" dot={{ r: 3, fill: 'hsl(262 80% 58%)' }} activeDot={{ r: 5 }} />
+                                        <Area type="basis" dataKey="total" stroke="hsl(262 80% 58%)" strokeWidth={2} fill="url(#gradAdmin)" dot={false} activeDot={false} isAnimationActive={true} animationDuration={1200} />
                                 </AreaChart>
                             </ChartContainer>
                         </CardContent>
@@ -172,7 +230,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
                     <Card className="min-w-0">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">Documentos por área</CardTitle>
-                            <CardDescription className="text-xs">Áreas con más documentos activos</CardDescription>
+                            <CardDescription className="text-xs">{desc}</CardDescription>
                         </CardHeader>
                         <CardContent className="overflow-hidden">
                             <ChartContainer config={areaConfig} className="h-[200px] w-full">
@@ -190,7 +248,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
                                         tickFormatter={(v: string) => v.length > 12 ? v.slice(0, 11) + '…' : v}
                                     />
                                     <ChartTooltip content={<ChartTooltipContent indicator="dot" hideLabel />} />
-                                    <Bar dataKey="total" fill="hsl(220 90% 56%)" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                                        <Bar dataKey="total" fill="hsl(220 90% 56%)" radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={true} animationDuration={1200} />
                                 </BarChart>
                             </ChartContainer>
                         </CardContent>
@@ -273,11 +331,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
                                     <ChartContainer config={alertaConfig} className="h-[160px] w-full">
                                         <PieChart>
                                             <ChartTooltip content={<ChartTooltipContent nameKey="nivel" hideLabel />} />
-                                            <Pie data={alertasPorNivel} dataKey="total" nameKey="nivel" cx="50%" cy="50%" innerRadius={46} outerRadius={68} strokeWidth={2}>
-                                                {alertasPorNivel.map((entry) => (
-                                                    <Cell key={entry.nivel} fill={entry.fill} />
-                                                ))}
-                                            </Pie>
+                                            <Pie data={alertasPorNivel} dataKey="total" nameKey="nivel" cx="50%" cy="50%" innerRadius={46} outerRadius={68} strokeWidth={2} isAnimationActive={false} />
                                         </PieChart>
                                     </ChartContainer>
 

@@ -313,14 +313,15 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
                     </div>
 
                     {/* ── Tab: Usuarios registrados ─────────────────── */}
-                    <TabsContent value="activos" className="mt-4">
-                        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                    <TabsContent value="activos" className="mt-2">
+                        <div className="overflow-hidden rounded-xl border border-border ">
                             {/* Toolbar INTERNA (Dentro del borde) */}
-                            <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
+                            <div className="flex items-center justify-between border-b bg-[var(--card-background)] px-4 py-2.5 ">
                                 <div className="flex items-center gap-2">
-                                    <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                                    <Label className="text-[12px] text-muted-foreground">
                                         Mostrar
                                     </Label>
+                                    <div className='px-4'>
                                     <Select value={perPage} onValueChange={changePerPage}>
                                         <SelectTrigger className="h-7 w-[65px] text-[11px] bg-background">
                                             <SelectValue />
@@ -330,6 +331,7 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
                                             <SelectItem value="10">10</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center gap-4">
@@ -349,8 +351,9 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
                             {/* Tabla */}
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="bg-muted/20 border-t-0 hover:bg-transparent">
+                                    <TableRow className="bg-[var(--card-background)] border-t-0 hover:bg-transparent hover:bg-muted/60">
                                         <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Nombre</TableHead>
+                                         <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Rol</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Email</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Área</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold uppercase text-muted-foreground">Estado</TableHead>
@@ -360,8 +363,9 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
                                 <TableBody>
                                     {approvedUsers.data.length > 0 ? (
                                         approvedUsers.data.map((user) => (
-                                            <TableRow key={user.id_user} className="hover:bg-muted/10 last:border-0">
+                                            <TableRow key={user.id_user} className="hover:bg-muted/60 last:border-0">
                                                 <TableCell className="text-center text-[12px] font-medium">{fullName(user)}</TableCell>
+                                                <TableCell className="text-center text-[12px] font-medium">{user.rol}</TableCell>
                                                 <TableCell className="text-center text-[12px] text-muted-foreground">{user.email}</TableCell>
                                                 <TableCell className="text-center text-[12px]">{user.area?.nombre ?? '-'}</TableCell>
                                                 <TableCell className="text-center">
@@ -396,8 +400,8 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
 
                     {/* ── Tab: Solicitudes ─────────────────────────── */}
                     <TabsContent value="solicitudes" className="mt-4">
-                        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                            <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
+                        <div className="overflow-hidden rounded-xl border  bg-card shadow-sm">
+                            <div className="flex items-center justify-between border-b bg-[var(--card-background)] px-4 py-2.5">
                                 <span className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Solicitudes Pendientes</span>
                                 <PaginationBar prev={pendingPrev} next={pendingNext} pages={pendingPages} />
                             </div>

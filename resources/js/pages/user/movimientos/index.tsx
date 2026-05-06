@@ -7,6 +7,7 @@ import {
     Loader2,
     LockOpen,
     MessageSquare,
+    RefreshCw,
     Reply,
     User,
     Mail,
@@ -172,8 +173,11 @@ type Props = {
     expedientesVencidos: PaginatedExpedientes | null;
     resumen: Resumen;
     filters?: {
-        busqueda?: string;
+        busqueda_activos?: string;
+        busqueda_cerrados?: string;
+        busqueda_vencidos?: string;
         per_page?: string;
+        tab?: string;
     };
 };
 
@@ -336,7 +340,7 @@ const useMovimientosRealTime = (
         const channel = echo.private(`areas.${areaId}.movimientos`);
 
         channel.listen(eventName, () => {
-            router.reload({ only: ['expedientes', 'resumen'] });
+            router.reload({ only: ['expedientesActivos', 'resumen'] });
         });
 
         return () => {
@@ -524,8 +528,8 @@ const MovimientoCard = ({
     return (
         <Card
             className={cn(
-                'relative overflow-hidden border bg-card transition-all duration-200 hover:shadow-md',
-                isActive && 'border-[var(--border)]/50 dark:border-[var(--border)]/80 shadow-sm ring-1 ring-[var(--ring)]/60 dark:ring-[var(--ring)]/80',
+                'relative overflow-hidden rounded-md border bg-card shadow-none transition-all duration-200 hover:shadow-sm',
+                isActive && 'border-[var(--border)]/50',
                 expedienteCerrado && 'bg-gray-50/50 dark:bg-muted/10',
                 bloqueado && 'bg-gray-50/30 dark:bg-muted/5 opacity-80',
                 className,
@@ -623,6 +627,8 @@ const MovimientoCard = ({
                                         Recibido
                                     </Badge>
                                 )
+
+
                             )}
                         </div>
                     </div>
@@ -664,7 +670,7 @@ const MovimientoCard = ({
                     {/* Fila 3: recepción + comentario */}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {movimiento.fecha_recepcion && (
-                            <span className="flex shrink-0 items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                            <span className="flex shrink-0 items-center gap-1 text-chart-4">
                                 <CheckCircle className="h-3.5 w-3.5 shrink-0" />
                                 Recibido{' '}
                                 {formatTime(movimiento.fecha_recepcion)}
@@ -730,7 +736,7 @@ const MovimientoCard = ({
                             {movimiento.respuesta_enviada && (
                                 <Badge
                                     variant="outline"
-                                    className="border-emerald-200 bg-emerald-50 px-1.5 text-[10px] text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                    className="rounded-full border-chart-4/10 bg-background/10 px-2.5 py-0.5 text-xs font-bold text-chart-4  backdrop-blur-sm"
                                 >
                                     <Check className="mr-1 h-3 w-3" />
                                     Respondido
@@ -767,23 +773,30 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
     const [activosState, setActivosState]     = useState<ExpedienteGroup[]>(expedientesActivos.data);
     const [cerradosState, setCerradosState]   = useState<ExpedienteGroup[]>(expedientesCerrados?.data ?? []);
     const [vencidosState, setVencidosState]   = useState<ExpedienteGroup[]>(expedientesVencidos?.data ?? []);
-    const [cerradosLoaded, setCerradosLoaded] = useState(false);
+    const [cerradosLoaded, setCerradosLoaded] = useState(!!expedientesCerrados);
     const [cerradosLoading, setCerradosLoading] = useState(false);
-    const [vencidosLoaded, setVencidosLoaded] = useState(false);
+    const [vencidosLoaded, setVencidosLoaded] = useState(!!expedientesVencidos);
     const [vencidosLoading, setVencidosLoading] = useState(false);
     const [loadingExpediente, setLoadingExpediente] = useState<number | null>(null);
-    const [activeTab, setActiveTab] = useState('activos');
+    const [activeTab, setActiveTab] = useState(filters?.tab === 'cerrados' ? 'cerrados' : filters?.tab === 'vencidos' ? 'vencidos' : 'activos');
     const [perPage, setPerPage] = useState(filters?.per_page ?? String(expedientesActivos.per_page ?? 5));
-    const [busqueda, setBusqueda] = useState(filters?.busqueda ?? '');
+    const [busquedaActivos,  setBusquedaActivos]  = useState(filters?.busqueda_activos  ?? '');
+    const [busquedaCerrados, setBusquedaCerrados] = useState(filters?.busqueda_cerrados ?? '');
+    const [busquedaVencidos, setBusquedaVencidos] = useState(filters?.busqueda_vencidos ?? '');
+    const busqueda = activeTab === 'cerrados' ? busquedaCerrados : activeTab === 'vencidos' ? busquedaVencidos : busquedaActivos;
+    const [refreshing, setRefreshing] = useState(false);
+    const openValuesRef = useRef<Record<string, string[]>>({});
     const busquedaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Sincronizar estados locales cuando cambian las props (paginación, recarga)
     useEffect(() => { setActivosState(expedientesActivos.data); }, [expedientesActivos.data]);
     useEffect(() => {
-        if (expedientesCerrados) { setCerradosState(expedientesCerrados.data); setCerradosLoading(false); }
+        if (expedientesCerrados) setCerradosState(expedientesCerrados.data);
+        setCerradosLoading(false);
     }, [expedientesCerrados]);
     useEffect(() => {
-        if (expedientesVencidos) { setVencidosState(expedientesVencidos.data); setVencidosLoading(false); }
+        if (expedientesVencidos) setVencidosState(expedientesVencidos.data);
+        setVencidosLoading(false);
     }, [expedientesVencidos]);
 
     // ── Paginación por tab ────────────────────────────────────────────────────
@@ -807,18 +820,39 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
         setPerPage(value);
         router.get(
             MovimientoController.index.url(),
-            { per_page: value, activos_page: 1, ...(busqueda ? { busqueda } : {}) },
+            {
+                per_page: value,
+                activos_page: 1,
+                ...(busquedaActivos  ? { busqueda_activos:  busquedaActivos  } : {}),
+                ...(busquedaCerrados ? { busqueda_cerrados: busquedaCerrados } : {}),
+                ...(busquedaVencidos ? { busqueda_vencidos: busquedaVencidos } : {}),
+            },
             { preserveScroll: true, preserveState: true, replace: true },
         );
     };
 
     const handleBusqueda = (value: string): void => {
-        setBusqueda(value);
+        if (activeTab === 'activos')  setBusquedaActivos(value);
+        else if (activeTab === 'cerrados') setBusquedaCerrados(value);
+        else setBusquedaVencidos(value);
+
         if (busquedaTimer.current) clearTimeout(busquedaTimer.current);
         busquedaTimer.current = setTimeout(() => {
+            const ba = activeTab === 'activos'  ? value : busquedaActivos;
+            const bc = activeTab === 'cerrados' ? value : busquedaCerrados;
+            const bv = activeTab === 'vencidos' ? value : busquedaVencidos;
             router.get(
                 MovimientoController.index.url(),
-                { per_page: perPage, activos_page: 1, ...(value ? { busqueda: value } : {}) },
+                {
+                    per_page: perPage,
+                    tab: activeTab,
+                    ...(activeTab === 'activos'  ? { activos_page:  1 } : {}),
+                    ...(activeTab === 'cerrados' ? { cerrados_page: 1 } : {}),
+                    ...(activeTab === 'vencidos' ? { vencidos_page: 1 } : {}),
+                    ...(ba ? { busqueda_activos:  ba } : {}),
+                    ...(bc ? { busqueda_cerrados: bc } : {}),
+                    ...(bv ? { busqueda_vencidos: bv } : {}),
+                },
                 { preserveScroll: true, preserveState: true, replace: true },
             );
         }, 1500);
@@ -839,10 +873,12 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
     };
 
     const refreshMovimientos = (): void => {
+        setRefreshing(true);
         const only: string[] = ['expedientesActivos', 'resumen'];
         if (cerradosLoaded) only.push('expedientesCerrados');
         if (vencidosLoaded) only.push('expedientesVencidos');
         router.reload({ only });
+        setTimeout(() => setRefreshing(false), 1500);
     };
 
     // ── Ver más movimientos de un grupo ──────────────────────────────────────
@@ -871,12 +907,39 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
         }
     };
 
+    const handleOcultar = (
+        expedienteId: number,
+        setState: React.Dispatch<React.SetStateAction<ExpedienteGroup[]>>,
+    ) => {
+        setState((prev) =>
+            prev.map((exp) =>
+                exp.expediente_id === expedienteId
+                    ? { ...exp, movimientos: exp.movimientos.slice(0, 2), has_more: true }
+                    : exp,
+            ),
+        );
+    };
+
+    const handleAccordionChange = (tabKey: string, newValues: string[]) => {
+        const prev = openValuesRef.current[tabKey] ?? [];
+        const added = newValues.find((v) => !prev.includes(v));
+        openValuesRef.current[tabKey] = newValues;
+        if (added) {
+            setTimeout(() => {
+                const item = document.getElementById(`exp-${added}`);
+                const content = item?.querySelector('[data-slot="accordion-content"]') ?? item;
+                content?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 320);
+        }
+    };
+
     // ── Render de la lista de expedientes ────────────────────────────────────
     const renderExpedientes = (
         grupos: ExpedienteGroup[],
         setState: React.Dispatch<React.SetStateAction<ExpedienteGroup[]>>,
         emptyTitle: string,
         emptySubtitle: string,
+        tabKey: string,
     ) => {
         if (grupos.length === 0) {
             return (
@@ -889,12 +952,13 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
         }
 
         return (
-            <Accordion type="multiple" defaultValue={[]} className="space-y-2">
+            <Accordion type="multiple" defaultValue={[]} className="space-y-2 " onValueChange={(v) => handleAccordionChange(tabKey, v)}>
                 {grupos.map((expediente, index) => (
                     <AccordionItem
+                        id={`exp-${expediente.expediente_id}`}
                         key={expediente.expediente_id}
                         value={String(expediente.expediente_id)}
-                        className="animate-slide-in-up rounded-lg border bg-card px-4 last:border-b"
+                        className="animate-slide-in-up rounded-lg border bg-card px-4"
                         style={{ animationDelay: `${index * 70}ms` }}
                     >
                         <AccordionTrigger className="py-3 hover:no-underline">
@@ -951,7 +1015,7 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                         </AccordionTrigger>
 
                         <AccordionContent>
-                            <div className="space-y-5 pb-2">
+                            <div className="space-y-3 pb-2">
                                 {expediente.movimientos.map((movimiento) => (
                                     <MovimientoCard
                                         key={movimiento.id_movimiento}
@@ -961,18 +1025,30 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                         showNotificationDot={movimiento.puede_responder && expediente.estado === 'abierto'}
                                     />
                                 ))}
-                                {expediente.has_more && (
-                                    <div className="flex justify-start pt-2">
-                                        <Button
-                                            type="button" size="sm" variant="outline"
-                                            disabled={loadingExpediente === expediente.expediente_id}
-                                            onClick={() => handleVerMas(expediente.expediente_id, expediente.movimientos.length, setState)}
-                                        >
-                                            {loadingExpediente === expediente.expediente_id ? <Spinner className="mr-2" /> : null}
-                                            Ver más movimientos
-                                        </Button>
+
+                                {(expediente.has_more || expediente.movimientos.length > 2) && (
+                                    <div className="flex gap-2 pt-2">
+                                        {expediente.has_more && (
+                                            <Button
+                                                type="button" size="sm" variant="outline"
+                                                disabled={loadingExpediente === expediente.expediente_id}
+                                                onClick={() => handleVerMas(expediente.expediente_id, expediente.movimientos.length, setState)}
+                                            >
+                                                {loadingExpediente === expediente.expediente_id ? <Spinner className="mr-2" /> : null}
+                                                Ver más movimientos
+                                            </Button>
+                                        )}
+                                        {expediente.movimientos.length > 2 && (
+                                            <Button
+                                                type="button" size="sm" variant="ghost"
+                                                onClick={() => handleOcultar(expediente.expediente_id, setState)}
+                                            >
+                                                Ocultar
+                                            </Button>
+                                        )}
                                     </div>
                                 )}
+
                             </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -1002,6 +1078,10 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                         </p>
                     </div>
                     <Button type="button" size="sm" variant="outline" onClick={refreshMovimientos}>
+                        <RefreshCw className={cn(
+                            'h-3.5 w-3.5 transition-transform',
+                            refreshing ? 'duration-[1500ms] rotate-[360deg]' : 'duration-0',
+                        )} />
                         Actualizar
                     </Button>
                 </div>
@@ -1138,14 +1218,14 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                         </div>
                     </div>
 
-                    <TabsContent value="activos" className="mt-4">
-                        {renderExpedientes(activosState, setActivosState, 'No tienes expedientes activos', 'Los expedientes activos aparecerán aquí.')}
+                    <TabsContent value="activos" className="mt-4 ">
+                        {renderExpedientes(activosState, setActivosState, 'No tienes expedientes activos', 'Los expedientes activos aparecerán aquí.', 'activos')}
                     </TabsContent>
                     <TabsContent value="cerrados" className="mt-4">
-                        {cerradosLoading ? <LoadingTab /> : renderExpedientes(cerradosState, setCerradosState, 'No tienes expedientes cerrados', 'Los expedientes cerrados aparecerán aquí.')}
+                        {cerradosLoading ? <LoadingTab /> : renderExpedientes(cerradosState, setCerradosState, 'No tienes expedientes cerrados', 'Los expedientes cerrados aparecerán aquí.', 'cerrados')}
                     </TabsContent>
                     <TabsContent value="vencidos" className="mt-4">
-                        {vencidosLoading ? <LoadingTab /> : renderExpedientes(vencidosState, setVencidosState, 'No tienes expedientes vencidos', 'Los expedientes vencidos aparecerán aquí.')}
+                        {vencidosLoading ? <LoadingTab /> : renderExpedientes(vencidosState, setVencidosState, 'No tienes expedientes vencidos', 'Los expedientes vencidos aparecerán aquí.', 'vencidos')}
                     </TabsContent>
                 </Tabs>
             </div>

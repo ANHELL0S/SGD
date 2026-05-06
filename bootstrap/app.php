@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,6 +47,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request) {
+            $seconds = (int) ($exception->getHeaders()['Retry-After'] ?? 60);
+            return back()
+                ->withErrors(['email' => __('auth.throttle')])
+                ->with('retry_after', $seconds);
+        });
+
         $renderNotFound = function (Request $request) {
             return Inertia::render('errors/404')
                 ->toResponse($request)

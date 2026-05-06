@@ -35,6 +35,7 @@ type Movimiento = {
     a_area_id: number;
     enviado_por: number;
     comentario: string | null;
+    respuesta_comentario: string | null;
     fecha_envio: string | null;
     fecha_recepcion: string | null;
     created_at: string;
@@ -152,11 +153,11 @@ function TimelineItem({ mov, isLast }: { mov: MovimientoHistorial; isLast: boole
             )}
             <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 border ${
                 isReceived
-                    ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
+                    ? 'bg-chart-4/10 border-chart-4/20 dark:bg-chart-4/40'
                     : 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800'
             }`}>
                 {isReceived
-                    ? <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    ? <CheckCircle className="h-3.5 w-3.5 text-chart-4/60 dark:text-emerald-400" />
                     : <Clock className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
                 }
             </div>
@@ -182,7 +183,7 @@ function TimelineItem({ mov, isLast }: { mov: MovimientoHistorial; isLast: boole
                         {formatDateShort(mov.fecha_envio)}
                     </span>
                     {isReceived && (
-                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        <span className="text-[11px] text-chart-4/60 font-medium">
                             Recibido {formatDateShort(mov.fecha_recepcion)}
                         </span>
                     )}
@@ -245,7 +246,7 @@ export default function Show({ movimiento, documento, movimientos, canEnviar }: 
                                     variant="outline"
                                     className={isPending
                                         ? 'border-amber-200 bg-amber-50 text-amber-700 text-xs dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400'
-                                        : 'border-emerald-200 bg-emerald-50 text-emerald-700 text-xs dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                        : 'border-chart-4/20 bg-chart-4/10 text-chart-4/70 text-xs'
                                     }
                                 >
                                     {isPending ? 'Pendiente' : 'Recibido'}
@@ -343,25 +344,25 @@ export default function Show({ movimiento, documento, movimientos, canEnviar }: 
                     {/* Panel lateral con tabs */}
                     <div className="rounded-xl border bg-card overflow-hidden">
                         <Tabs defaultValue="movimiento">
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/20">
-                                <TabsList className="h-7 bg-transparent p-0 gap-0.5">
+                            <div className="border-b bg-muted/20">
+                                <TabsList className="h-8 w-full rounded-none bg-transparent p-0">
                                     <TabsTrigger
                                         value="movimiento"
-                                        className="h-7 px-2.5 text-xs gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                                        className="flex-1 h-8 text-xs gap-1.5 rounded-none data-[state=active]:bg-background data-[state=active]:shadow-sm"
                                     >
                                         <Send className="h-3 w-3" />
                                         Movimiento
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="datos"
-                                        className="h-7 px-2.5 text-xs gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                                        className="flex-1 h-8 text-xs gap-1.5 rounded-none data-[state=active]:bg-background data-[state=active]:shadow-sm"
                                     >
                                         <FileText className="h-3 w-3" />
                                         Documento
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="historial"
-                                        className="h-7 px-2.5 text-xs gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                                        className="flex-1 h-8 text-xs gap-1.5 rounded-none data-[state=active]:bg-background data-[state=active]:shadow-sm"
                                     >
                                         <History className="h-3 w-3" />
                                         Historial
@@ -397,7 +398,7 @@ export default function Show({ movimiento, documento, movimientos, canEnviar }: 
                                         </InfoRow>
                                         {movimiento.fecha_recepcion && (
                                             <InfoRow icon={CheckCircle} label="Fecha de recepción">
-                                                <span className="text-emerald-600 dark:text-emerald-400">
+                                                <span className="text-chart-4/80 font-medium">
                                                     {formatDate(movimiento.fecha_recepcion)}
                                                     <span className="text-xs text-muted-foreground ml-1">
                                                         {formatTime(movimiento.fecha_recepcion)}
@@ -415,6 +416,21 @@ export default function Show({ movimiento, documento, movimientos, canEnviar }: 
                                                         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Comentario</p>
                                                         <p className="text-sm bg-muted/40 rounded px-2 py-1.5 border-l-2 border-border italic">
                                                             {movimiento.comentario}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {movimiento.respuesta_comentario && (
+                                            <div className="py-2.5 border-b border-border/50">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center shrink-0 mt-0.5">
+                                                        <CheckCircle className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-1">Respuesta</p>
+                                                        <p className="text-sm bg-emerald-50/60 dark:bg-emerald-950/20 rounded px-2 py-1.5 border-l-2 border-emerald-300 dark:border-emerald-700">
+                                                            {movimiento.respuesta_comentario}
                                                         </p>
                                                     </div>
                                                 </div>

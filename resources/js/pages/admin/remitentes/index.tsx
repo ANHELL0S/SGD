@@ -444,9 +444,9 @@ export default function Index({
                         <CarouselItem>
                             <div className="overflow-hidden rounded-xl border bg-card">
                                 {/* Toolbar */}
-                                <div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+                                <div className="flex items-center justify-between gap-3 border-b bg-[var(--card-background)]px-4 py-3">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
+                                        <span className="text-xs text-muted-foreground px-4">
                                             Mostrar
                                         </span>
                                         <Select
@@ -518,17 +518,17 @@ export default function Index({
                                 {/* Tabla activos */}
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                            <TableHead className="w-20 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                        <TableRow className="bg-[var(--card-background)]">
+                                            <TableHead className="px-10 w-20 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 ID
                                             </TableHead>
-                                            <TableHead className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                            <TableHead className=" text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 Nombre
                                             </TableHead>
-                                            <TableHead className="w-28 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                            <TableHead className="w-28 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 Estado
                                             </TableHead>
-                                            <TableHead className="w-40 text-right text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                            <TableHead className="w-40 text-center text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                                 Acciones
                                             </TableHead>
                                         </TableRow>
@@ -540,18 +540,18 @@ export default function Index({
                                                     key={remitente.id_remitente}
                                                     className="hover:bg-muted/20"
                                                 >
-                                                    <TableCell className="font-mono text-xs text-muted-foreground">
+                                                    <TableCell className=" px-10 font-mono text-xs text-muted-foreground">
                                                         #{remitente.id_remitente}
                                                     </TableCell>
-                                                    <TableCell className="text-[12px] font-medium">
+                                                    <TableCell className=" text-[12px] font-medium">
                                                         {remitente.nombre}
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge
                                                             variant="outline"
-                                                            className={
+                                                            className= {
                                                                 remitente.estado
-                                                                    ? 'border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 shadow-sm backdrop-blur-sm'
+                                                                    ? ' border-chart-4/30 bg-chart-4/10 px-3 py-0.5 text-xs font-bold text-chart-4 shadow-sm backdrop-blur-sm'
                                                                     : 'border-border bg-background text-muted-foreground'
                                                             }
                                                         >

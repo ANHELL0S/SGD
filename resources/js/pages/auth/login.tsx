@@ -1,4 +1,5 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -16,6 +17,19 @@ type Props = {
 };
 
 export default function Login({ status, canResetPassword }: Props) {
+    const { flash } = usePage<{ flash: { retry_after?: number | null } }>().props;
+    const [countdown, setCountdown] = useState<number | null>(flash?.retry_after ?? null);
+
+    useEffect(() => {
+        setCountdown(flash?.retry_after ?? null);
+    }, [flash?.retry_after]);
+
+    useEffect(() => {
+        if (!countdown || countdown <= 0) return;
+        const timer = setTimeout(() => setCountdown((prev) => (prev ?? 1) - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [countdown]);
+
     return (
         <>
             <Head title="Iniciar sesión" />
@@ -80,11 +94,18 @@ export default function Login({ status, canResetPassword }: Props) {
                             </Label>
                         </div>
 
+                        {countdown !== null && countdown > 0 && (
+                            <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-center text-sm text-amber-700">
+                                Puedes intentar de nuevo en{' '}
+                                <span className="font-semibold tabular-nums">{countdown}</span>{' '}
+                                {countdown === 1 ? 'segundo' : 'segundos'}
+                            </div>
+                        )}
+
                         <Button
                             type="submit"
-                            className="w-full bg-blue-600 text-white hover:bg-blue-700"
                             tabIndex={4}
-                            disabled={processing}
+                            disabled={processing || (countdown !== null && countdown > 0)}
                             data-test="login-button"
                         >
                             {processing && <Spinner />}
@@ -101,3 +122,4 @@ Login.layout = {
     title: 'Iniciar sesión',
     description: 'Ingrese su correo y contraseña para acceder',
 };
+

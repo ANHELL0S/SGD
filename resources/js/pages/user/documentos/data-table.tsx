@@ -308,7 +308,7 @@ export default function DataTable({
             <div className="hidden md:block">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-[var(--card background)]">
+                        <TableRow className="bg-[var(--card-background)]">
                             {/* Agregado text-center a todos los headers */}
                             <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Fecha
@@ -340,7 +340,7 @@ export default function DataTable({
                             documentos.map((documento, index) => (
                                 <TableRow
                                     key={documento.id_documento}
-                                    className="animate-fade-in-row hover:bg-[var(--card background)]/60"
+                                    className="animate-fade-in-row bg-[var(--card-background)] "
                                     style={{ animationDelay: `${index * 55}ms` }}
                                 >
                                     {/* 1. Fecha centrada */}

@@ -3,15 +3,19 @@
 namespace App\Models;
 
 use App\Concerns\AuditsCrudActivity;
+use App\Observers\DocumentoObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
 
+#[ObservedBy(DocumentoObserver::class)]
 class Documento extends Model
 {
-    use AuditsCrudActivity, SoftDeletes;
+    use AuditsCrudActivity, HasFactory, SoftDeletes;
 
     protected $table = 'documentos';
 

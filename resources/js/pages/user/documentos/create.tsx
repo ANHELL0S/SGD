@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
     CalendarDays,
@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
@@ -24,7 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProcessingOverlay } from '@/components/ui/processing-overlay';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import {
     Select,
     SelectContent,
@@ -94,20 +94,21 @@ export default function Create({ remitentes, tipos }: Props) {
             archivo: null,
         });
 
-    // Manejo de la URL de vista previa para evitar fugas de memoria
-    const pdfPreviewUrl = useMemo(() => {
-        if (!data.archivo) return null;
-        return URL.createObjectURL(data.archivo);
-    }, [data.archivo]);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+    const previewUrlRef = useRef<string | null>(null);
 
     useEffect(() => {
         return () => {
-            if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+            if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
         };
-    }, [pdfPreviewUrl]);
+    }, []);
 
     const handleFile = (file: File | null): void => {
         if (processing) return;
+        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+        const newUrl = file ? URL.createObjectURL(file) : null;
+        previewUrlRef.current = newUrl;
+        setPdfPreviewUrl(newUrl);
         setData('archivo', file);
     };
 
@@ -176,7 +177,7 @@ export default function Create({ remitentes, tipos }: Props) {
                                     {data.archivo && (
                                         <button
                                             type="button"
-                                            onClick={() => { setData('archivo', null); }}
+                                            onClick={() => handleFile(null)}
                                             className="text-[10px] font-bold text-red-500 hover:underline tracking-tighter"
                                         >
                                             REEMPLAZAR
@@ -237,21 +238,18 @@ export default function Create({ remitentes, tipos }: Props) {
 
 
                     </div>
-                    {/* COLUMNA IZQUIERDA: FORMULARIO */}
-                    <div className="space-y-6">
+                    {/* COLUMNA DERECHA: FORMULARIO */}
+                    <div className="space-y-4 order-1 xl:order-2">
                         <Card className="border-t-2 border-t-[var(--primary)] shadow-sm">
-                            <CardContent className="px-6 pb-6 pt-0 space-y-6">
-
-                                {/* Sección 1: Identificación */}
-                                <div className="grid gap-4 sm:grid-cols-2 ">
-
-                                    <FormField label="Número de oficio" icon={FileText} error={errors.numero_oficio} >
+                            <CardContent className="px-4 pb-4 pt-2 space-y-3 mt-2">
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    <FormField label="Número de oficio" icon={FileText} error={errors.numero_oficio}>
                                         <Input
                                             disabled={processing}
                                             value={data.numero_oficio}
                                             onChange={(e) => setData('numero_oficio', e.target.value)}
                                             placeholder="OF-2026-001"
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
 
@@ -261,7 +259,7 @@ export default function Create({ remitentes, tipos }: Props) {
                                             disabled={processing}
                                             value={data.fecha_oficio}
                                             onChange={(e) => setData('fecha_oficio', e.target.value)}
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
 
@@ -271,54 +269,68 @@ export default function Create({ remitentes, tipos }: Props) {
                                             value={data.asunto}
                                             onChange={(e) => setData('asunto', e.target.value)}
                                             placeholder="Descripción del contenido"
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
                                 </div>
+                            </CardContent>
+                        </Card>
 
-                                {/* Separador */}
-                                <div className="flex items-center gap-4 py-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--secondary-foreground)]">Clasificación</span>
-                                    <div className="h-[1px] w-full bg-slate-100" />
-                                </div>
+                        <Separator />
 
-                                {/* Sección 2: Clasificación */}
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <FormField label="Remitente" required icon={User} error={errors.remitente_id}>
-                                        <Select
-                                            disabled={processing}
-                                            value={String(data.remitente_id || '')}
-                                            onValueChange={(v) => setData('remitente_id', v)}
-                                        >
-                                            <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {remitentes.map((r) => (
-                                                    <SelectItem key={r.id_remitente} value={String(r.id_remitente)}>{r.nombre}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormField>
-
-                                    <FormField label="Tipo" required icon={Layers} error={errors.tipo}>
-                                        <Select
-                                            disabled={processing}
-                                            value={data.tipo}
-                                            onValueChange={(v) => setData('tipo', v)}
-                                        >
-                                            <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {tipos.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormField>
-
-                                    <FormField label="Palabra clave" required icon={Tag} error={errors.palabra_clave} className="sm:col-span-2">
+                        <Card className="border-t-2 border-t-[var(--primary)] shadow-sm">
+                            <CardContent className="px-4 pt-0 pb-2">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex flex-row gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <FormField label="Remitente" required icon={User} error={errors.remitente_id}>
+                                                <Select
+                                                    disabled={processing}
+                                                    value={String(data.remitente_id || '')}
+                                                    onValueChange={(v) => setData('remitente_id', v)}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs w-full">
+                                                        <SelectValue placeholder="Seleccionar..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {remitentes.map((r) => (
+                                                            <SelectItem key={r.id_remitente} value={String(r.id_remitente)}>
+                                                                <span className="truncate block max-w-[120px]" title={r.nombre}>{r.nombre}</span>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormField>
+                                        </div>
+                                        <div className="w-px bg-slate-200 mx-1" />
+                                        <div className="flex-1 min-w-0">
+                                            <FormField label="Tipo" required icon={Layers} error={errors.tipo}>
+                                                <Select
+                                                    disabled={processing}
+                                                    value={data.tipo}
+                                                    onValueChange={(v) => setData('tipo', v)}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs w-full">
+                                                        <SelectValue placeholder="Seleccionar..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {tipos.map((t) => (
+                                                            <SelectItem key={t} value={t}>
+                                                                <span className="truncate block max-w-[80px]" title={t}>{t}</span>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormField>
+                                        </div>
+                                    </div>
+                                    <FormField label="Palabra clave" required icon={Tag} error={errors.palabra_clave} className="w-full">
                                         <Input
                                             disabled={processing}
                                             value={data.palabra_clave}
                                             onChange={(e) => setData('palabra_clave', e.target.value)}
                                             placeholder="Ej: Contratación, Presupuesto..."
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
                                 </div>
@@ -329,7 +341,7 @@ export default function Create({ remitentes, tipos }: Props) {
                             <Button
                                 type="submit"
                                 disabled={processing || !data.archivo}
-                                className="w-full sm:w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                                className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all active:scale-[0.98] text-xs"
                             >
                                 {processing ? 'Guardando...' : 'Guardar documento'}
                             </Button>

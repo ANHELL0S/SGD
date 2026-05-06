@@ -142,7 +142,8 @@ class ExpedienteController extends Controller
             ]);
         });
 
-        return back()->with('success', 'El expediente se cerró correctamente. Ya no se podrán enviar ni responder movimientos.');
+        return redirect()->to(route('user.movimientos.index', ['tab' => 'cerrados']))
+            ->with('success', 'El expediente se cerró correctamente. Ya no se podrán enviar ni responder movimientos.');
     }
 
     /**
@@ -176,7 +177,8 @@ class ExpedienteController extends Controller
             ]);
         });
 
-        return back()->with('success', 'El expediente se abrió nuevamente. Ya se pueden enviar y responder movimientos.');
+        return redirect()->to(route('user.movimientos.index', ['tab' => 'cerrados']))
+            ->with('success', 'El expediente se abrió nuevamente. Ya se pueden enviar y responder movimientos.');
     }
 
     /**

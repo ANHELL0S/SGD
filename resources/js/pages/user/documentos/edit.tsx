@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProcessingOverlay } from '@/components/ui/processing-overlay';
 import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import {
     Select,
     SelectContent,
@@ -98,55 +99,42 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
             <Head title="Editar documento" />
             <ProcessingOverlay show={processing} message="Actualizando documento..." />
 
-            <div className="mx-auto w-full max-w-screen-xl p-4 md:p-6 lg:p-8 animate-slide-in-up">
+            <div className="mx-auto w-full max-w-screen-xl p-2 md:p-4 lg:p-6 animate-slide-in-up">
                 {/* Header Superior idéntico al de Create */}
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                        <div className='flex items-center gap-4 '>
-                           <Button asChild variant="ghost" size="icon" className="rounded-full shrink-0 mt-0.5">
-                        <Link href={DocumentoController.index.url()}>
-                            <ArrowLeft className="h-4 w-4" />
-                        </Link>
-                    </Button>
-                                <h1 className="text-xl font-bold tracking-tight text-[var(--text)]">Editar documento</h1>
-                                <p className="text-xs text-muted-foreground">Actualiza la información técnica o reemplaza el PDF.</p>
-                            </div>
-                        </div>
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                        <Button asChild variant="ghost" size="icon" className="rounded-full shrink-0 mt-0.5">
+                            <Link href={DocumentoController.index.url()}>
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <h1 className="text-base font-semibold tracking-tight text-[var(--text)]">Editar documento</h1>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-10 sm:ml-0">Actualiza la información técnica o reemplaza el PDF.</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1fr_480px] items-start">
+                <form onSubmit={handleSubmit} className="grid gap-4 xl:grid-cols-[1fr_400px] items-start">
 
                     {/* COLUMNA IZQUIERDA: VISOR (Estructura idéntica a la que me pasaste) */}
                     <div className="xl:sticky xl:top-8 order-2 xl:order-1">
-                        <Card className="overflow-hidden border-t-2 border-t-[var(--primary)] shadow-sm flex flex-col h-[600px]">
-                            <CardHeader className="border-b text-sm px-5 py-1">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="flex items-center gap-2 text-xs font-semibold">
-                                        <FileText className="h-4 w-4 text-[var(--primary)]" />
-                                        {data.archivo ? 'Nuevo PDF Listo' : 'Archivo Actual'}
-                                    </CardTitle>
-                                </div>
-                            </CardHeader>
-
-                            <CardContent className="p-0 flex-1 relative bg-[var(--card)]">
+                        <Card className="overflow-hidden flex flex-col h-[500px]">
+                            <CardContent className="p-0 pt-0 flex-1 relative bg-[var(--card)]">
                                 <iframe
                                     title="Vista previa"
                                     src={`${pdfPreviewUrl}#view=FitH&navpanes=0`}
-                                    className="h-full w-full border-none"
+                                    className="h-full w-full border-none min-h-[320px]"
                                 />
-                                {/* Botón de carga sobre el iframe solo cuando no hay archivo seleccionado */}
                                 {!data.archivo && (
-                                    <label className="absolute bottom-4 right-4 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg hover:opacity-90 transition-all">
+                                    <label className="absolute bottom-2 right-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg hover:opacity-90 transition-all">
                                         <Upload className="h-4 w-4" />
                                         <input type="file" accept=".pdf" className="hidden" onChange={(e) => setData('archivo', e.target.files?.[0] || null)} />
                                     </label>
                                 )}
                             </CardContent>
-
                             {(shouldRenderProgress || errors.archivo) && (
-                                <div className="px-5 py-3 border-t bg-white">
+                                <div className="px-3 py-2 border-t bg-white">
                                     {errors.archivo && (
-                                        <p className="text-[11px] font-medium text-red-600 mb-2 flex items-center gap-1">
+                                        <p className="text-[10px] font-medium text-red-600 mb-1 flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" /> {errors.archivo}
                                         </p>
                                     )}
@@ -165,93 +153,108 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
                     </div>
 
                     {/* COLUMNA DERECHA: FORMULARIO */}
-                    <div className="space-y-6 order-1 xl:order-2">
+                    <div className="space-y-4 order-1 xl:order-2">
+                        {/* Info principal */}
                         <Card className="border-t-2 border-t-[var(--primary)] shadow-sm">
-                            <CardContent className="px-6 pb-6 pt-0 space-y-6 mt-4">
-
-                                {/* Sección 1: Identificación */}
-                                <div className="grid gap-4 sm:grid-cols-2">
+                            <CardContent className="px-4 pb-4 pt-2 space-y-3 mt-2">
+                                <div className="grid gap-2 sm:grid-cols-2">
                                     <FormField label="Número de oficio" icon={FileText} error={errors.numero_oficio}>
                                         <Input
                                             disabled={processing}
                                             value={data.numero_oficio}
                                             onChange={(e) => setData('numero_oficio', e.target.value)}
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
-
                                     <FormField label="Fecha de oficio" required icon={CalendarDays} error={errors.fecha_oficio}>
                                         <Input
                                             type="date"
                                             disabled={processing}
                                             value={data.fecha_oficio}
                                             onChange={(e) => setData('fecha_oficio', e.target.value)}
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
-
                                     <FormField label="Asunto" required icon={FileText} error={errors.asunto} className="sm:col-span-2">
                                         <Input
                                             disabled={processing}
                                             value={data.asunto}
                                             onChange={(e) => setData('asunto', e.target.value)}
-                                            className="h-9"
-                                        />
-                                    </FormField>
-                                </div>
-
-                                {/* Separador idéntico */}
-                                <div className="flex items-center gap-4 py-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--secondary-foreground)]">Clasificación</span>
-                                    <div className="h-[1px] w-full bg-slate-100" />
-                                </div>
-
-                                {/* Sección 2: Clasificación */}
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <FormField label="Remitente" required icon={User} error={errors.remitente_id}>
-                                        <Select
-                                            disabled={processing}
-                                            value={data.remitente_id}
-                                            onValueChange={(v) => setData('remitente_id', v)}
-                                        >
-                                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {remitentes.map((r) => (
-                                                    <SelectItem key={r.id_remitente} value={String(r.id_remitente)}>{r.nombre}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormField>
-                                    <FormField label="Tipo" required icon={Layers} error={errors.tipo}>
-                                        <Select
-                                            disabled={processing}
-                                            value={data.tipo}
-                                            onValueChange={(v) => setData('tipo', v)}
-                                        >
-                                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {tipos.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormField>
-
-                                    <FormField label="Palabra clave" required icon={Tag} error={errors.palabra_clave} className="sm:col-span-2">
-                                        <Input
-                                            disabled={processing}
-                                            value={data.palabra_clave}
-                                            onChange={(e) => setData('palabra_clave', e.target.value)}
-                                            className="h-9"
+                                            className="h-8 text-xs"
                                         />
                                     </FormField>
                                 </div>
                             </CardContent>
                         </Card>
 
+                        <Separator  className=' ' />
+
+                        {/* Clasificación separada */}
+                        <Card className="border-t-2 border-t-[var(--primary)] shadow-sm">
+                            <CardContent className="px-4 pt-0 pb-2">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex flex-row gap-2">
+                                        {/* Remitente */}
+                                        <div className="flex-1 min-w-0">
+                                            <FormField label="Remitente" required icon={User} error={errors.remitente_id}>
+                                                <Select
+                                                    disabled={processing}
+                                                    value={data.remitente_id}
+                                                    onValueChange={(v) => setData('remitente_id', v)}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs w-full">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {remitentes.map((r) => (
+                                                            <SelectItem key={r.id_remitente} value={String(r.id_remitente)}>
+                                                                <span className="truncate block max-w-[120px]" title={r.nombre}>{r.nombre}</span>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormField>
+                                        </div>
+                                        {/* Separador visual */}
+                                        <div className="w-px bg-slate-200 mx-1" />
+                                        {/* Tipo */}
+                                        <div className="flex-1 min-w-0">
+                                            <FormField label="Tipo" required icon={Layers} error={errors.tipo}>
+                                                <Select
+                                                    disabled={processing}
+                                                    value={data.tipo}
+                                                    onValueChange={(v) => setData('tipo', v)}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs w-full">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {tipos.map((t) => (
+                                                            <SelectItem key={t} value={t}>
+                                                                <span className="truncate block max-w-[80px]" title={t}>{t}</span>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormField>
+                                        </div>
+                                    </div>
+                                    <FormField label="Palabra clave" required icon={Tag} error={errors.palabra_clave} className="w-full">
+                                        <Input
+                                            disabled={processing}
+                                            value={data.palabra_clave}
+                                            onChange={(e) => setData('palabra_clave', e.target.value)}
+                                            className="h-8 text-xs"
+                                        />
+                                    </FormField>
+                                </div>
+                            </CardContent>
+                        </Card>
                         <div className="flex justify-end">
                             <Button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all active:scale-[0.98]"
+                                className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all active:scale-[0.98] text-xs"
                             >
                                 {processing ? 'Guardando...' : 'Guardar cambios'}
                             </Button>

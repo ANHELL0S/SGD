@@ -20,6 +20,7 @@ class Movimiento extends Model
         'destinatario_user_id',
         'enviado_por',
         'comentario',
+        'respuesta_comentario',
         'fecha_recepcion',
         'fecha_envio',
         'ultimo_recordatorio_at',

@@ -1,4 +1,4 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     Bell,
@@ -10,11 +10,13 @@ import {
     FolderOpen,
     GitBranch,
     MessageSquare,
+    RefreshCw,
     Reply,
     User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Separator } from '@/components/ui/separator';
 
 import ConsultorController from '@/actions/App/Http/Controllers/Consultor/ConsultorController';
 import { show as documentoShow } from '@/actions/App/Http/Controllers/User/DocumentoController';
@@ -430,6 +432,13 @@ export default function Index({ expedientes, tab, resumen }: Props) {
 
     const [recordandoId, setRecordandoId] = useState<number | null>(null);
     const [perPage, setPerPage] = useState(String(expedientes.per_page ?? 5));
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        router.reload({ only: ['expedientes', 'resumen'] });
+        setTimeout(() => setRefreshing(false), 1500);
+    };
 
     const paginationLinks = expedientes.links ?? [];
     const previousLink    = paginationLinks[0] ?? null;
@@ -487,7 +496,7 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                     <AccordionItem
                         key={expediente.expediente_id ?? 'sin-exp'}
                         value={String(expediente.expediente_id ?? 'sin-exp')}
-                        className="rounded-lg border bg-card px-4 last:border-b"
+                        className="rounded-lg border bg-card px-4"
                     >
                         <AccordionTrigger className="py-3 hover:no-underline">
                             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
@@ -502,7 +511,7 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                                         {expediente.total_movimientos} mov.
                                     </span>
                                     {expediente.pendientes > 0 && (
-                                        <Badge variant="outline" className="border-chart-3/30 bg-chart-3/10 px-2.5 py-0.5 text-xs font-bold text-chart-3 shadow-sm backdrop-blur-sm">
+                                        <Badge variant="outline" className="border-chart-3/30 bg-background/20 px-2.5 py-0.5 text-xs font-bold text-chart-3/80 shadow-sm backdrop-blur-sm">
                                             {expediente.pendientes} pendiente{expediente.pendientes !== 1 ? 's' : ''}
                                         </Badge>
                                     )}
@@ -562,8 +571,12 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => router.reload({ only: ['expedientes', 'resumen'] })}
+                        onClick={handleRefresh}
                     >
+                        <RefreshCw className={cn(
+                            'h-3.5 w-3.5 transition-transform',
+                            refreshing ? 'duration-[1500ms] rotate-[360deg]' : 'duration-0',
+                        )} />
                         Actualizar
                     </Button>
                 </div>
@@ -583,50 +596,93 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                     ))}
                 </div>
 
-                {/* Tabs */}
+                {/* Tabs arriba de la paginación */}
                 <Tabs value={tab} onValueChange={changeTab}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <TabsList>
-                            <TabsTrigger value="activos" className="gap-2">
-                                Activos
-                                {resumen.expedientes_activos > 0 && (
-                                    <span className="rounded-full border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 shadow-sm backdrop-blur-sm">
-                                        {resumen.expedientes_activos}
-                                    </span>
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="cerrados" className="gap-2">
-                                Cerrados
-                                {resumen.expedientes_cerrados > 0 && (
-                                    <span className="rounded-full border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary shadow-sm backdrop-blur-sm">
-                                        {resumen.expedientes_cerrados}
-                                    </span>
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="vencidos" className="gap-2">
-                                Vencidos
-                                {resumen.expedientes_vencidos > 0 && (
-                                    <span className="rounded-full border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-xs font-bold text-destructive shadow-sm backdrop-blur-sm">
-                                        {resumen.expedientes_vencidos}
-                                    </span>
-                                )}
-                            </TabsTrigger>
-                        </TabsList>
+                    <TabsList className="mb-3">
+                        <TabsTrigger value="activos" className="gap-2">
+                            Activos
+                            {resumen.expedientes_activos > 0 && (
+                                <span className="rounded-full border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 shadow-sm backdrop-blur-sm">
+                                    {resumen.expedientes_activos}
+                                </span>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger value="cerrados" className="gap-2">
+                            Cerrados
+                            {resumen.expedientes_cerrados > 0 && (
+                                <span className="rounded-full border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary shadow-sm backdrop-blur-sm">
+                                    {resumen.expedientes_cerrados}
+                                </span>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger value="vencidos" className="gap-2">
+                            Vencidos
+                            {resumen.expedientes_vencidos > 0 && (
+                                <span className="rounded-full border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-xs font-bold text-destructive shadow-sm backdrop-blur-sm">
+                                    {resumen.expedientes_vencidos}
+                                </span>
+                            )}
+                        </TabsTrigger>
+                    </TabsList>
 
-                        <div className="flex items-center gap-2">
-                            <Label className="text-xs font-medium text-muted-foreground">Mostrar</Label>
-                            <Select value={perPage} onValueChange={changePerPage}>
-                                <SelectTrigger className="h-8 w-[70px] text-[13px]">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="5">5</SelectItem>
-                                    <SelectItem value="7">7</SelectItem>
-                                    <SelectItem value="10">10</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    <Separator className=' ' />
+
+                    {/* Paginación superior */}
+                    {expedientes.total > 0 && (
+                        <div className="flex flex-wrap mt-3 items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Label className="text-xs font-medium text-muted-foreground">Mostrar</Label>
+                                <Select value={perPage} onValueChange={changePerPage}>
+                                    <SelectTrigger className="h-8 w-[70px] text-[13px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="5">5</SelectItem>
+                                        <SelectItem value="7">7</SelectItem>
+                                        <SelectItem value="10">10</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+
+                            <div className="flex-1" />
+                            <div className="flex items-center">
+                                <Pagination className="mx-0 w-auto">
+                                    <PaginationContent>
+                                        <PaginationItem>
+                                            <PaginationPrevious
+                                                href={previousLink?.url ?? '#'}
+                                                onClick={(e) => { e.preventDefault(); goToUrl(previousLink?.url ?? null); }}
+                                                className={!previousLink?.url ? 'pointer-events-none opacity-40' : ''}
+                                            />
+                                        </PaginationItem>
+                                        {pageLinks.map((link) => (
+                                            <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
+                                                <PaginationLink
+                                                    href={link.url ?? '#'}
+                                                    isActive={link.active}
+                                                    onClick={(e) => { e.preventDefault(); goToUrl(link.url); }}
+                                                    className={!link.url ? 'pointer-events-none opacity-40' : ''}
+                                                >
+                                                    {link.label
+                                                        .replace('&laquo;', '').replace('&raquo;', '')
+                                                        .replace('pagination.previous', '')
+                                                        .replace('pagination.next', '')}
+                                                </PaginationLink>
+                                            </PaginationItem>
+                                        ))}
+                                        <PaginationItem>
+                                            <PaginationNext
+                                                href={nextLink?.url ?? '#'}
+                                                onClick={(e) => { e.preventDefault(); goToUrl(nextLink?.url ?? null); }}
+                                                className={!nextLink?.url ? 'pointer-events-none opacity-40' : ''}
+                                            />
+                                        </PaginationItem>
+                                    </PaginationContent>
+                                </Pagination>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <TabsContent value={tab} className="mt-4">
                         {renderExpedientes(
@@ -639,49 +695,6 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                             'Todos los expedientes están cerrados o vencidos',
                         )}
                     </TabsContent>
-
-                    {/* Paginación inferior */}
-                    {expedientes.total > 0 && (
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                            <p className="text-xs text-muted-foreground">
-                                Mostrando {expedientes.from ?? 0}–{expedientes.to ?? 0} de{' '}
-                                <span className="font-medium text-foreground">{expedientes.total}</span> expedientes
-                            </p>
-                            <Pagination className="mx-0 w-auto">
-                                <PaginationContent>
-                                    <PaginationItem>
-                                        <PaginationPrevious
-                                            href={previousLink?.url ?? '#'}
-                                            onClick={(e) => { e.preventDefault(); goToUrl(previousLink?.url ?? null); }}
-                                            className={!previousLink?.url ? 'pointer-events-none opacity-40' : ''}
-                                        />
-                                    </PaginationItem>
-                                    {pageLinks.map((link) => (
-                                        <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
-                                            <PaginationLink
-                                                href={link.url ?? '#'}
-                                                isActive={link.active}
-                                                onClick={(e) => { e.preventDefault(); goToUrl(link.url); }}
-                                                className={!link.url ? 'pointer-events-none opacity-40' : ''}
-                                            >
-                                                {link.label
-                                                    .replace('&laquo;', '').replace('&raquo;', '')
-                                                    .replace('pagination.previous', '')
-                                                    .replace('pagination.next', '')}
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                    ))}
-                                    <PaginationItem>
-                                        <PaginationNext
-                                            href={nextLink?.url ?? '#'}
-                                            onClick={(e) => { e.preventDefault(); goToUrl(nextLink?.url ?? null); }}
-                                            className={!nextLink?.url ? 'pointer-events-none opacity-40' : ''}
-                                        />
-                                    </PaginationItem>
-                                </PaginationContent>
-                            </Pagination>
-                        </div>
-                    )}
                 </Tabs>
             </div>
         </>

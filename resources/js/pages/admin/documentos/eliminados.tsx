@@ -433,14 +433,14 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                         {/* Barra: per_page + contador + paginación */}
                         <div className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
                             <div className="flex items-center gap-2">
-                                <Label className="text-[12px] font-medium text-[var(--sidebar-foreground)]">
+                                <Label className="text-[12px] text-[var(--sidebar-foreground)]/50">
                                     Mostrar
                                 </Label>
                                 <Select
                                     value={data.per_page}
                                     onValueChange={changePerPage}
                                 >
-                                    <SelectTrigger className="h-8 w-[80px] text-[12px]">
+                                    <SelectTrigger className="h-8 w-[60px] text-[12px]">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -449,6 +449,9 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                         <SelectItem value="10">10</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <Label className="text-[12px] text-[var(--sidebar-foreground)]/50" >
+                                    Por página
+                                </Label>
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -535,27 +538,24 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                         <div className="border-[var(--sidebar-fo)]-200 overflow-hidden rounded-lg border">
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="bg-[var(--sidebar-fo)]-50">
+                                    <TableRow className="bg-[var(--card-background)]">
                                         {/* Headers centrados y con tipografía uniforme */}
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
-                                            No. Oficio
-                                        </TableHead>
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                        <TableHead className="w-28 px-19 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             Dueño
                                         </TableHead>
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                        <TableHead className="w-28 px-18 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             Remitente
                                         </TableHead>
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                        <TableHead className="w-28 px-10 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             Tipo
                                         </TableHead>
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                        <TableHead className="w-28 px-10 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             Palabra Clave
                                         </TableHead>
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                        <TableHead className="w-28 px-10 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             Eliminado
                                         </TableHead>
-                                        <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--sidebar-foreground)] uppercase">
+                                        <TableHead className="w-28 px-10 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             Acciones
                                         </TableHead>
                                     </TableRow>
@@ -565,14 +565,8 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                         documentos.data.map((documento) => (
                                             <TableRow
                                                 key={documento.id_documento}
-                                                className="hover:bg-[var(--sidebar-fo)]-50/60"
+                                                className="hover:bg-[var(--muted)]/40"
                                             >
-                                                {/* 1. No. Oficio */}
-                                                <TableCell className="text-center text-[12px] font-medium text-[var(--sidebar-foreground)]">
-                                                    {documento.numero_oficio ||
-                                                        '-'}
-                                                </TableCell>
-
                                                 {/* 2. Dueño (Centrado con doble línea) */}
                                                 <TableCell className="min-w-[200px] text-center">
                                                     {documento.user ? (
@@ -602,7 +596,7 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                                 </TableCell>
 
                                                 {/* 3. Remitente */}
-                                                <TableCell className="text-center text-[12px] text-[var(--sidebar-fo)]/70">
+                                                <TableCell className="text-center text-[12px] text-[var(--sidebar-foreground)]/70">
                                                     {documento.remitente
                                                         ?.nombre || '-'}
                                                 </TableCell>
@@ -636,7 +630,7 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                                             type="button"
                                                             size="sm"
                                                             variant="outline"
-                                                            className="h-6 border-[var(--border)] px-3 text-[12px] text-[var(--chart-4)] hover:bg-[var(--chart-4)]/30 hover:text-[var(--chart-4)]" // Un poco más compacto para tablas
+                                                            className="h-6 border-[var(--border)] px-3 text-[12px] text-[var(--chart-4)] hover:bg-[var(--chart-4)]/10 hover:text-[var(--chart-4)]" // Un poco más compacto para tablas
                                                             disabled={
                                                                 processing
                                                             }

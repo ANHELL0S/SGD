@@ -1,23 +1,20 @@
+import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    User,
-    Mail,
-    CreditCard,
-    Building2,
-    Shield,
-    Lock,
-    Eye,
-} from 'lucide-react';
+import { ArrowLeft, User, Building2, Lock } from 'lucide-react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { index, store } from '@/routes/admin/usuarios';
-import React from 'react';
 
 // ============================================================================
 // TIPOS
@@ -42,42 +39,44 @@ type Props = {
 // SUB-COMPONENTES
 // ============================================================================
 
-function SectionHeader({ icon: Icon, title, description }: {
+function SectionHeader({
+    icon: Icon,
+    title,
+    description,
+}: {
     icon: React.ElementType;
     title: string;
     description?: string;
 }) {
     return (
-        <div className="flex items-center gap-3 pb-4 border-b">
-            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 border-b pb-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                 <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-                <p className="text-sm font-medium">{title}</p>
+                <p className="text-xs font-medium">{title}</p>
                 {description && (
-                    <p className="text-xs text-muted-foreground">{description}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {description}
+                    </p>
                 )}
             </div>
         </div>
     );
 }
 
-function FieldGroup({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="grid gap-4 md:grid-cols-2">
-            {children}
-        </div>
-    );
-}
-
-function Field({ label, error, children }: {
+function Field({
+    label,
+    error,
+    children,
+}: {
     label: string;
     error?: string | null;
     children: React.ReactNode;
 }) {
     return (
         <div className="grid gap-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 {label}
             </Label>
             {children}
@@ -85,7 +84,7 @@ function Field({ label, error, children }: {
                 {error && (
                     <InputError
                         message={error}
-                        className="text-xs flex items-center gap-1"
+                        className="flex items-center gap-1 text-xs"
                     />
                 )}
             </div>
@@ -93,16 +92,20 @@ function Field({ label, error, children }: {
     );
 }
 
+function FieldGroup({ children }: { children: React.ReactNode }) {
+    return <div className="grid gap-4 md:grid-cols-2">{children}</div>;
+}
+
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
 export default function Create({ areas, roles }: Props) {
-    const [passwordError, setPasswordError] = React.useState<string | null>(null);
-    const [confirmPasswordError, setConfirmPasswordError] = React.useState<string | null>(null);
     const [nombreError, setNombreError] = React.useState<string | null>(null);
     const [apellidoError, setApellidoError] = React.useState<string | null>(null);
     const [cedulaError, setCedulaError] = React.useState<string | null>(null);
+    const [passwordError, setPasswordError] = React.useState<string | null>(null);
+    const [confirmPasswordError, setConfirmPasswordError] = React.useState<string | null>(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         nombre: '',
@@ -117,36 +120,28 @@ export default function Create({ areas, roles }: Props) {
 
     // ── Validaciones ──
 
-    const validarPassword = (valor: string): boolean => {
-        if (valor.length < 8) { setPasswordError('Mínimo 8 caracteres.'); return false; }
-        if (!/[A-Z]/.test(valor)) { setPasswordError('Debe incluir una mayúscula.'); return false; }
-        if (!/[a-z]/.test(valor)) { setPasswordError('Debe incluir una minúscula.'); return false; }
-        if (!/\d/.test(valor)) { setPasswordError('Debe incluir un número.'); return false; }
-        if (!/[^A-Za-z0-9]/.test(valor)) { setPasswordError('Debe incluir un carácter especial.'); return false; }
-        setPasswordError(null);
-        return true;
-    };
-
-    const validarConfirmacion = (confirmacion: string, passwordActual = data.password): boolean => {
-        if (confirmacion.length === 0) { setConfirmPasswordError(null); return true; }
-        if (confirmacion !== passwordActual) {
-            setConfirmPasswordError('Las contraseñas no coinciden.');
+    const validarNombre = (valor: string): boolean => {
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]*$/.test(valor)) {
+            setNombreError('Solo se permiten letras.');
             return false;
         }
-        setConfirmPasswordError(null);
-        return true;
-    };
-
-    const validarNombre = (valor: string): boolean => {
-        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]*$/.test(valor)) { setNombreError('Solo se permiten letras.'); return false; }
-        if (valor.trim().length > 0 && valor.trim().length < 3) { setNombreError('Mínimo 3 letras.'); return false; }
+        if (valor.trim().length > 0 && valor.trim().length < 3) {
+            setNombreError('Mínimo 3 letras.');
+            return false;
+        }
         setNombreError(null);
         return true;
     };
 
     const validarApellido = (valor: string): boolean => {
-        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]*$/.test(valor)) { setApellidoError('Solo se permiten letras.'); return false; }
-        if (valor.trim().length > 0 && valor.trim().length < 3) { setApellidoError('Mínimo 3 letras.'); return false; }
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]*$/.test(valor)) {
+            setApellidoError('Solo se permiten letras.');
+            return false;
+        }
+        if (valor.trim().length > 0 && valor.trim().length < 3) {
+            setApellidoError('Mínimo 3 letras.');
+            return false;
+        }
         setApellidoError(null);
         return true;
     };
@@ -168,16 +163,45 @@ export default function Create({ areas, roles }: Props) {
         return parseInt(cedula[9], 10) === digitoVerificador;
     };
 
-    const validarCedula = (valor: string) => {
-        if (valor.length === 0) { setCedulaError(null); return; }
-        if (valor.length < 10) { setCedulaError('La cédula debe tener 10 dígitos.'); return; }
-        if (!validarCedulaEcuador(valor)) { setCedulaError('Cédula no válida.'); return; }
+    const validarCedula = (valor: string): boolean => {
+        if (valor.length === 0) { setCedulaError('La cédula es requerida.'); return false; }
+        if (valor.length < 10) { setCedulaError('La cédula debe tener 10 dígitos.'); return false; }
+        if (!validarCedulaEcuador(valor)) { setCedulaError('Cédula no válida.'); return false; }
         setCedulaError(null);
+        return true;
+    };
+
+    const validarPassword = (valor: string): boolean => {
+        if (valor.length < 8) { setPasswordError('Mínimo 8 caracteres.'); return false; }
+        if (!/[A-Z]/.test(valor)) { setPasswordError('Debe incluir una mayúscula.'); return false; }
+        if (!/[a-z]/.test(valor)) { setPasswordError('Debe incluir una minúscula.'); return false; }
+        if (!/\d/.test(valor)) { setPasswordError('Debe incluir un número.'); return false; }
+        if (!/[^A-Za-z0-9]/.test(valor)) { setPasswordError('Debe incluir un carácter especial.'); return false; }
+        setPasswordError(null);
+        return true;
+    };
+
+    const validarConfirmacion = (confirmacion: string, passwordActual = data.password): boolean => {
+        if (confirmacion.length === 0) { setConfirmPasswordError(null); return true; }
+        if (confirmacion !== passwordActual) {
+            setConfirmPasswordError('Las contraseñas no coinciden.');
+            return false;
+        }
+        setConfirmPasswordError(null);
+        return true;
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!validarConfirmacion(data.password_confirmation)) return;
+        const nombreValido      = validarNombre(data.nombre);
+        const apellidoValido    = validarApellido(data.apellido);
+        const cedulaValida      = validarCedula(data.cedula);
+        const passwordValida    = validarPassword(data.password);
+        const confirmacionValida = validarConfirmacion(data.password_confirmation);
+
+        if (!nombreValido || !apellidoValido || !cedulaValida || !passwordValida || !confirmacionValida) {
+            return;
+        }
         post(store.url(), {
             preserveScroll: true,
             onSuccess: () => reset('password', 'password_confirmation'),
@@ -188,18 +212,24 @@ export default function Create({ areas, roles }: Props) {
         <>
             <Head title="Crear usuario" />
 
-            <div className="mx-auto w-full px-4 py-6 md:px-8 space-y-6">
-
+            <div className="mx-auto w-full space-y-6 px-4 py-6 md:px-8">
                 {/* ── Header ── */}
                 <div className="flex items-center gap-3">
-                    <Button asChild variant="ghost" size="icon" className="rounded-full shrink-0">
+                    <Button
+                        asChild
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 rounded-full"
+                    >
                         <Link href={index()}>
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-xl font-semibold leading-tight">Crear usuario</h1>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="truncate text-xl leading-tight font-semibold">
+                            Crear usuario
+                        </h1>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                             El usuario quedará activo y aprobado desde el inicio.
                         </p>
                     </div>
@@ -210,14 +240,15 @@ export default function Create({ areas, roles }: Props) {
 
                 {/* ── Formulario ── */}
                 <form onSubmit={handleSubmit} className="space-y-5">
-
                     {/* Sección: Información personal */}
-                    <div className="rounded-xl border bg-card px-5 py-4 space-y-4">
-                        <SectionHeader
-                            icon={User}
-                            title="Información personal"
-                            description="Nombre, apellido e identificación del usuario"
-                        />
+                    <div className="space-y-4 rounded-xl border bg-card px-5 py-4">
+                        <div className="[&_svg]:text-primary/70">
+                            <SectionHeader
+                                icon={User}
+                                title="Información personal"
+                                description="Nombre, apellido e identificación del usuario"
+                            />
+                        </div>
                         <FieldGroup>
                             <Field label="Nombre" error={nombreError || errors.nombre}>
                                 <Input
@@ -259,6 +290,7 @@ export default function Create({ areas, roles }: Props) {
                                         setData('cedula', v);
                                         validarCedula(v);
                                     }}
+                                    onBlur={(e) => validarCedula(e.target.value)}
                                 />
                             </Field>
                             <Field label="Correo electrónico" error={errors.email}>
@@ -274,12 +306,14 @@ export default function Create({ areas, roles }: Props) {
                     </div>
 
                     {/* Sección: Área y rol */}
-                    <div className="rounded-xl border bg-card px-5 py-4 space-y-4">
-                        <SectionHeader
-                            icon={Building2}
-                            title="Área y rol"
-                            description="Define dónde trabajará y qué permisos tendrá"
-                        />
+                    <div className="space-y-4 rounded-xl border bg-card px-5 py-4">
+                        <div className="[&_svg]:text-primary/70">
+                            <SectionHeader
+                                icon={Building2}
+                                title="Área y rol"
+                                description="Define dónde trabajará y qué permisos tendrá"
+                            />
+                        </div>
                         <FieldGroup>
                             <Field label="Área" error={errors.area_id}>
                                 <Select
@@ -287,11 +321,14 @@ export default function Create({ areas, roles }: Props) {
                                     onValueChange={(v) => setData('area_id', v)}
                                 >
                                     <SelectTrigger id="area_id">
-                                        <SelectValue placeholder="Selecciona un área" />
+                                        <SelectValue placeholder="Selecciona una área" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {areas.map((area) => (
-                                            <SelectItem key={area.id_area} value={String(area.id_area)}>
+                                            <SelectItem
+                                                key={area.id_area}
+                                                value={String(area.id_area)}
+                                            >
                                                 {area.nombre}
                                             </SelectItem>
                                         ))}
@@ -308,7 +345,10 @@ export default function Create({ areas, roles }: Props) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {roles.map((role) => (
-                                            <SelectItem key={role.value} value={role.value}>
+                                            <SelectItem
+                                                key={role.value}
+                                                value={role.value}
+                                            >
                                                 {role.label}
                                             </SelectItem>
                                         ))}
@@ -319,18 +359,23 @@ export default function Create({ areas, roles }: Props) {
                     </div>
 
                     {/* Sección: Contraseña */}
-                    <div className="rounded-xl border bg-card px-5 py-4 space-y-4">
-                        <SectionHeader
-                            icon={Lock}
-                            title="Contraseña"
-                            description="Mínimo 8 caracteres con mayúscula, número y carácteres espciales, los que puedes usar son: @ . #"
-                        />
+                    <div className="space-y-4 rounded-xl border bg-card px-5 py-4">
+                        <div className="[&_svg]:text-primary/70">
+                            <SectionHeader
+                                icon={Lock}
+                                title="Contraseña"
+                                description="Requerida para el nuevo usuario"
+                            />
+                        </div>
+                        <div className="text-[var(--secondary-foreground)]/70 text-xs">
+                            Su contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas, números y caracteres especiales como @*.
+                        </div>
                         <FieldGroup>
                             <Field label="Contraseña" error={passwordError || errors.password}>
                                 <PasswordInput
                                     id="password"
                                     value={data.password}
-                                    placeholder="********"
+                                    placeholder="••••••••"
                                     onChange={(e) => {
                                         setData('password', e.target.value);
                                         validarPassword(e.target.value);
@@ -358,19 +403,23 @@ export default function Create({ areas, roles }: Props) {
 
                     {/* ── Acciones ── */}
                     <div className="flex items-center justify-end gap-2 pt-1">
-                        <Button asChild type="button" variant="outline">
+                        <Button
+                            asChild
+                            type="button"
+                            variant="outline"
+                            className="bg-[var(--primary)] text-white hover:bg-primary/90 xs:w-auto"
+                        >
                             <Link href={index()}>Cancelar</Link>
                         </Button>
                         <Button
                             type="submit"
                             disabled={processing}
                             variant="default"
-                            className="min-w-[130px] text-sidebar-foreground"
+                            className="min-w-[130px] text-white"
                         >
                             {processing ? 'Guardando...' : 'Guardar usuario'}
                         </Button>
                     </div>
-
                 </form>
             </div>
         </>

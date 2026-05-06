@@ -39,14 +39,32 @@ class DocumentoController extends Controller
 
         $filters = [
             'palabra_clave' => $request->string('palabra_clave')->toString(),
-            'texto_ocr' => $request->string('texto_ocr')->toString(),
-            'remitente_id' => $request->string('remitente_id')->toString(),
-            'tipo' => $request->string('tipo')->toString(),
-            'recibido' => $request->string('recibido')->toString(),
-            'fecha_desde' => $request->string('fecha_desde')->toString(),
-            'fecha_hasta' => $request->string('fecha_hasta')->toString(),
-            'con_ocr' => $request->boolean('con_ocr'),
-            'per_page' => (string) $perPage,
+            'texto_ocr'     => $request->string('texto_ocr')->toString(),
+            'remitente_id'  => $request->string('remitente_id')->toString(),
+            'tipo'          => $request->string('tipo')->toString(),
+            'recibido'      => $request->string('recibido')->toString(),
+            'fecha_desde'   => $request->string('fecha_desde')->toString(),
+            'fecha_hasta'   => $request->string('fecha_hasta')->toString(),
+            'con_ocr'       => $request->boolean('con_ocr'),
+            'per_page'      => (string) $perPage,
+        ];
+
+        $busquedaFts = $filters['texto_ocr'];
+
+        $selectColumns = [
+            'id_documento',
+            'numero_oficio',
+            'fecha_oficio',
+            'remitente_id',
+            'tipo',
+            'palabra_clave',
+            'asunto',
+            'archivo',
+            'recibido',
+            'area_actual_id',
+            'area_creadora_id',
+            'user_id',
+            'created_at',
         ];
 
         $documentos = Documento::query()
@@ -58,8 +76,18 @@ class DocumentoController extends Controller
             ->when(! $isAdmin, function (Builder $query) use ($user): void {
                 $query->where('user_id', $user->id_user);
             })
-            ->when($filters['palabra_clave'] !== '', fn (Builder $query) => $query->where('palabra_clave', 'like', "%{$filters['palabra_clave']}%"))
-            ->when($filters['texto_ocr'] !== '', fn (Builder $query) => $query->where('contenido_ocr', 'like', "%{$filters['texto_ocr']}%"))
+            ->when($filters['palabra_clave'] !== '', fn (Builder $query) => $query->whereRaw("unaccent(palabra_clave) ILIKE unaccent(?)", ["%{$filters['palabra_clave']}%"]))
+            ->when($busquedaFts !== '', function (Builder $query) use ($busquedaFts): void {
+                $query->whereRaw(
+                    "search_vector @@ websearch_to_tsquery('pg_catalog.spanish', unaccent(?))",
+                    [$busquedaFts],
+                );
+                // Ordena por relevancia primero; si hay empate, cae al orden por fecha
+                $query->orderByRaw(
+                    "ts_rank(search_vector, websearch_to_tsquery('pg_catalog.spanish', unaccent(?))) DESC",
+                    [$busquedaFts],
+                );
+            })
             ->when($filters['remitente_id'] !== '', fn (Builder $query) => $query->where('remitente_id', $filters['remitente_id']))
             ->when($filters['tipo'] !== '', fn (Builder $query) => $query->where('tipo', $filters['tipo']))
             ->when($filters['recibido'] !== '', fn (Builder $query) => $query->where('recibido', $filters['recibido']))
@@ -67,27 +95,14 @@ class DocumentoController extends Controller
             ->when($filters['fecha_hasta'] !== '', fn (Builder $query) => $query->whereDate('fecha_oficio', '<=', $filters['fecha_hasta']))
             ->when($filters['con_ocr'], fn (Builder $query) => $query->whereNotNull('contenido_ocr'))
             ->latest('id_documento')
-            ->paginate($perPage, [
-                'id_documento',
-                'numero_oficio',
-                'fecha_oficio',
-                'remitente_id',
-                'tipo',
-                'palabra_clave',
-                'asunto',
-                'archivo',
-                'recibido',
-                'area_actual_id',
-                'area_creadora_id',
-                'user_id',
-                'created_at',
-            ])
+            ->paginate($perPage, $selectColumns)
             ->withQueryString();
 
         return Inertia::render('user/documentos/index', [
-            'documentos' => $documentos,
-            'filters' => $filters,
-            'remitentes' => Remitente::query()
+            'documentos'     => $documentos,
+            'filters'        => $filters,
+            'busqueda_activa' => $busquedaFts !== '',
+            'remitentes'     => Remitente::query()
                 ->where('estado', true)
                 ->orderBy('id_remitente')
                 ->get(['id_remitente', 'nombre']),
@@ -419,7 +434,7 @@ class DocumentoController extends Controller
                 'user:id_user,nombre,apellido,area_id',
                 'user.area:id_area,nombre',
             ])
-            ->when($filters['palabra_clave'] !== '', fn (Builder $query) => $query->where('palabra_clave', 'like', "%{$filters['palabra_clave']}%"))
+            ->when($filters['palabra_clave'] !== '', fn (Builder $query) => $query->whereRaw("unaccent(palabra_clave) ILIKE unaccent(?)", ["%{$filters['palabra_clave']}%"]))
             ->when($filters['remitente_id'] !== '', fn (Builder $query) => $query->where('remitente_id', $filters['remitente_id']))
             ->when($filters['tipo'] !== '', fn (Builder $query) => $query->where('tipo', $filters['tipo']))
             ->when($filters['recibido'] !== '', fn (Builder $query) => $query->where('recibido', $filters['recibido']))

@@ -1,8 +1,8 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AreaChart, Area,
     BarChart, Bar,
-    PieChart, Pie, Cell,
+    PieChart, Pie,
     XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import {
@@ -17,6 +17,8 @@ import { FileText, Clock, ArrowRightLeft, CheckCircle2, ArrowRight } from 'lucid
 import { dashboard } from '@/routes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+type Periodo = 'semana' | 'mes' | 'año' | 'todos';
 
 interface Stats {
     totalDocumentos: number;
@@ -46,9 +48,25 @@ interface Props {
     porEstado: EstadoData[];
     porTipo: TipoData[];
     porMes: MesData[];
-    mesesSeleccionados: 1 | 3 | 6;
+    periodoSeleccionado: Periodo;
     ultimosDocumentos: UltimoDocumento[];
 }
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const PERIODOS: { key: Periodo; label: string }[] = [
+    { key: 'semana', label: 'Semana' },
+    { key: 'mes',    label: 'Mes'    },
+    { key: 'año',    label: 'Año'    },
+    { key: 'todos',  label: 'Todos'  },
+];
+
+const PERIODO_DESC: Record<Periodo, string> = {
+    semana: 'Esta semana',
+    mes:    'Este mes',
+    año:    'Este año',
+    todos:  'Todo el historial',
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -75,6 +93,10 @@ function formatDate(dateStr: string | null): string {
     return new Date(dateStr).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function cambiarPeriodo(periodo: Periodo) {
+    router.get(dashboard(), { periodo }, { preserveScroll: true, preserveState: false });
+}
+
 // ─── Chart configs ───────────────────────────────────────────────────────────
 
 const mesConfig = {
@@ -92,12 +114,22 @@ const tipoConfig = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function UserDashboard({ stats, porEstado, porTipo, porMes, mesesSeleccionados, ultimosDocumentos }: Props) {
+export default function UserDashboard({ stats, porEstado, porTipo, porMes, periodoSeleccionado, ultimosDocumentos }: Props) {
+    // Si el backend no envía periodoSeleccionado, usar 'todos' por defecto
+    const periodo = periodoSeleccionado ?? 'todos';
+    const desc = PERIODO_DESC[periodo];
+    const totalTipo = porTipo.reduce((s, e) => s + e.total, 0);
+
+    // Obtener el usuario autenticado desde las props globales de Inertia
+    const { auth } = usePage().props as { auth: { user?: { nombre?: string; apellido?: string; name?: string } } };
+    const nombre = auth?.user?.nombre || auth?.user?.name || '';
+    const apellido = auth?.user?.apellido || '';
+
     const statItems = [
         {
             title: 'Mis documentos',
             value: stats.totalDocumentos,
-            sub: 'total registrados',
+            sub: `registrados — ${desc.toLowerCase()}`,
             icon: FileText,
             alert: false,
         },
@@ -118,19 +150,37 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, meses
         {
             title: 'Respondidos',
             value: stats.respondidos,
-            sub: 'con respuesta generada',
+            sub: `con respuesta — ${desc.toLowerCase()}`,
             icon: CheckCircle2,
             alert: false,
         },
     ];
-
-    const totalTipo = porTipo.reduce((s, e) => s + e.total, 0);
 
     return (
         <>
             <Head title="Dashboard" />
 
             <div className="flex flex-col gap-6 p-6">
+                 <div className=" inline-flex items-start justify-between gap-2">
+                    <h1 className="text-2xl font-bold mb-2">
+                        Bienvenido de nuevo, {nombre || apellido ? ` ${nombre} ${apellido}` : ''}
+                    </h1>
+
+                    <div className="flex gap-1 rounded-md border p-0.5">
+                                    {PERIODOS.map(({ key, label }) => (
+                                        <Button
+                                            key={key}
+                                            size="sm"
+                                            variant={periodo === key ? 'default' : 'ghost'}
+                                            onClick={() => cambiarPeriodo(key)}
+                                            className="h-6 px-2 text-xs"
+                                        >
+                                            {label}
+                                        </Button>
+                                    ))}
+                    </div>
+
+                </div>
 
                 {/* ── Stats strip ───────────────────────────────────── */}
                 <Card className="overflow-hidden py-0">
@@ -162,23 +212,8 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, meses
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-sm font-medium">Actividad mensual</CardTitle>
-                                    <CardDescription className="text-xs">
-                                        {{1: 'Últimos 30 días', 3: 'Últimas 12 semanas', 6: 'Últimos 6 meses'}[mesesSeleccionados]}
-                                    </CardDescription>
-                                </div>
-                                <div className="flex gap-1 rounded-md border p-0.5">
-                                    {([1, 3, 6] as const).map((m) => (
-                                        <Button
-                                            key={m}
-                                            size="sm"
-                                            variant={mesesSeleccionados === m ? 'default' : 'ghost'}
-                                            onClick={() => router.get(dashboard(), { meses: m }, { preserveScroll: true, preserveState: false })}
-                                            className="h-6 px-2 text-xs"
-                                        >
-                                            {m}m
-                                        </Button>
-                                    ))}
+                                    <CardTitle className="text-sm font-medium">Actividad</CardTitle>
+                                    <CardDescription className="text-xs">{desc}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -195,7 +230,7 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, meses
                                     <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                                     <YAxis tickLine={false} axisLine={false} allowDecimals={false} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                                     <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                                    <Area type="monotone" dataKey="total" stroke="hsl(220 90% 56%)" strokeWidth={2} fill="url(#gradTotal)" dot={{ r: 3, fill: 'hsl(220 90% 56%)' }} activeDot={{ r: 5 }} />
+                                    <Area type="basis" dataKey="total" stroke="hsl(220 90% 56%)" strokeWidth={2} fill="url(#gradTotal)" dot={false} activeDot={false} isAnimationActive={true} animationDuration={1200} />
                                 </AreaChart>
                             </ChartContainer>
                         </CardContent>
@@ -204,7 +239,7 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, meses
                     <Card className="min-w-0">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">Por estado</CardTitle>
-                            <CardDescription className="text-xs">Distribución de tus documentos</CardDescription>
+                            <CardDescription className="text-xs">{desc}</CardDescription>
                         </CardHeader>
                         <CardContent className="overflow-hidden">
                             <ChartContainer config={estadoChartConfig} className="h-[200px] w-full">
@@ -221,11 +256,7 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, meses
                                         width={70}
                                     />
                                     <ChartTooltip content={<ChartTooltipContent indicator="dot" hideLabel />} />
-                                    <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                                        {porEstado.map((entry) => (
-                                            <Cell key={entry.estado} fill={entry.fill} />
-                                        ))}
-                                    </Bar>
+                                    <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={true} animationDuration={1200} />
                                 </BarChart>
                             </ChartContainer>
                         </CardContent>
@@ -294,17 +325,13 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, meses
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-medium">Tipo de documento</CardTitle>
-                            <CardDescription className="text-xs">Internos vs externos</CardDescription>
+                            <CardDescription className="text-xs">{desc}</CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-4">
                             <ChartContainer config={tipoConfig} className="h-[160px] w-full">
                                 <PieChart>
                                     <ChartTooltip content={<ChartTooltipContent nameKey="tipo" hideLabel />} />
-                                    <Pie data={porTipo} dataKey="total" nameKey="tipo" cx="50%" cy="50%" innerRadius={46} outerRadius={68} strokeWidth={2}>
-                                        {porTipo.map((entry) => (
-                                            <Cell key={entry.tipo} fill={entry.fill} />
-                                        ))}
-                                    </Pie>
+                                    <Pie data={porTipo} dataKey="total" nameKey="tipo" cx="50%" cy="50%" innerRadius={46} outerRadius={68} strokeWidth={2} isAnimationActive={false} />
                                 </PieChart>
                             </ChartContainer>
 

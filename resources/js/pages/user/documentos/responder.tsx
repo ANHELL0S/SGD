@@ -50,6 +50,7 @@ type Props = {
 
 type FormData = {
     movimiento_id: number;
+    solo_comentario: boolean;
     numero_oficio: string;
     fecha_oficio: string;
     remitente_id: string;
@@ -121,6 +122,7 @@ export default function Responder({ movimiento, remitentes }: Props) {
 
     const { data, setData, post, processing, progress, errors } = useForm<FormData>({
         movimiento_id: movimiento.id_movimiento,
+        solo_comentario: false,
         numero_oficio: '',
         fecha_oficio: todayDate(),
         remitente_id: String(movimiento.documento?.remitente_id ?? ''),
@@ -156,7 +158,13 @@ export default function Responder({ movimiento, remitentes }: Props) {
             <Head title="Responder oficio" />
             <ProcessingOverlay
                 show={processing}
-                message={isServerProcessing ? 'Enviando documento...' : 'Subiendo archivo...'}
+                message={
+                    data.solo_comentario
+                        ? 'Enviando respuesta...'
+                        : isServerProcessing
+                          ? 'Enviando documento...'
+                          : 'Subiendo archivo...'
+                }
             />
 
             <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 space-y-5">
@@ -188,10 +196,40 @@ export default function Responder({ movimiento, remitentes }: Props) {
                         <Badge variant="outline" className="text-[11px] border-primary/30 bg-primary/10 text-primary">
                             Oficio base: {oficioPadreLabel}
                         </Badge>
-                        <Badge variant="secondary" className="text-[11px]">
-                            Se enlazará como respuesta
-                        </Badge>
+                        {!data.solo_comentario && (
+                            <Badge variant="secondary" className="text-[11px]">
+                                Se enlazará como respuesta
+                            </Badge>
+                        )}
                     </div>
+                </div>
+
+                {/* Toggle de modo */}
+                <div className="flex items-center gap-1 p-1 rounded-xl border bg-muted/30 w-fit">
+                    <button
+                        type="button"
+                        onClick={() => setData('solo_comentario', false)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            !data.solo_comentario
+                                ? 'bg-card shadow-sm text-foreground border border-border/60'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <FileText className="h-3.5 w-3.5" />
+                        Con oficio adjunto
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setData('solo_comentario', true)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            data.solo_comentario
+                                ? 'bg-card shadow-sm text-foreground border border-border/60'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Solo comentario
+                    </button>
                 </div>
 
                 {/* Grid principal */}
@@ -200,89 +238,116 @@ export default function Responder({ movimiento, remitentes }: Props) {
                     {/* Columna izquierda — formulario */}
                     <form className="space-y-4" onSubmit={onSubmit}>
 
-                        {/* Campos editables */}
-                        <SectionPanel title="Datos del oficio" icon={FileText}>
-                            <div className="space-y-4">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="numero_oficio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                        Número de oficio <span className="normal-case text-muted-foreground/60">(opcional)</span>
-                                    </Label>
-                                    <Input
-                                        id="numero_oficio"
-                                        value={data.numero_oficio}
-                                        onChange={(e) => setData('numero_oficio', e.target.value)}
-                                        placeholder="Ej: OF-2026-042"
-                                        className="h-9"
-                                    />
-                                    <InputError message={errors.numero_oficio} />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="comentario_envio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                        Comentario / motivo <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Textarea
-                                        id="comentario_envio"
-                                        value={data.comentario_envio}
-                                        onChange={(e) => setData('comentario_envio', e.target.value)}
-                                        placeholder="Describe el motivo de esta respuesta..."
-                                        rows={4}
-                                        className="resize-none"
-                                        required
-                                    />
-                                    <InputError message={errors.comentario_envio} />
-                                </div>
-                            </div>
-                        </SectionPanel>
-
-                        {/* Archivo */}
-                        <SectionPanel title="Documento adjunto" icon={Upload}>
-                            <div className="space-y-3">
-                                <div
-                                    className="border-2 border-dashed border-border rounded-lg px-4 py-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors"
-                                    onClick={() => document.getElementById('archivo-input')?.click()}
-                                >
-                                    <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                                    <p className="text-sm text-muted-foreground">
-                                        {data.archivo
-                                            ? <span className="font-medium text-foreground">{data.archivo.name}</span>
-                                            : <>Haz clic para seleccionar o arrastra el archivo</>
-                                        }
+                        {data.solo_comentario ? (
+                            /* Modo: solo comentario */
+                            <SectionPanel title="Comentario de respuesta" icon={MessageSquare}>
+                                <div className="space-y-3">
+                                    <p className="text-xs text-muted-foreground">
+                                        Escribe la respuesta. No se creará un nuevo oficio; el comentario quedará registrado en este movimiento.
                                     </p>
-                                    <p className="text-xs text-muted-foreground/60 mt-1">Solo PDF · Máximo 4 MB</p>
-                                </div>
-                                <input
-                                    id="archivo-input"
-                                    type="file"
-                                    accept=".pdf,application/pdf"
-                                    className="hidden"
-                                    onChange={(e) => handleFile(e.target.files?.[0] || null)}
-                                />
-                                <InputError message={errors.archivo} />
-
-                                {progress && (
                                     <div className="space-y-1.5">
-                                        <Progress value={progress.percentage} className="h-1.5" />
-                                        <p className="text-xs text-muted-foreground text-right">{progress.percentage}%</p>
+                                        <Label htmlFor="comentario_envio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                            Respuesta <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Textarea
+                                            id="comentario_envio"
+                                            value={data.comentario_envio}
+                                            onChange={(e) => setData('comentario_envio', e.target.value)}
+                                            placeholder="Ej: El préstamo de sillas se realizó exitosamente..."
+                                            rows={6}
+                                            className="resize-none"
+                                            required
+                                        />
+                                        <InputError message={errors.comentario_envio} />
                                     </div>
-                                )}
-                            </div>
-                        </SectionPanel>
+                                </div>
+                            </SectionPanel>
+                        ) : (
+                            /* Modo: con documento */
+                            <>
+                                <SectionPanel title="Datos del oficio" icon={FileText}>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="numero_oficio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                Número de oficio <span className="normal-case text-muted-foreground/60">(opcional)</span>
+                                            </Label>
+                                            <Input
+                                                id="numero_oficio"
+                                                value={data.numero_oficio}
+                                                onChange={(e) => setData('numero_oficio', e.target.value)}
+                                                placeholder="Ej: OF-2026-042"
+                                                className="h-9"
+                                            />
+                                            <InputError message={errors.numero_oficio} />
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="comentario_envio" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                Comentario / motivo <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Textarea
+                                                id="comentario_envio"
+                                                value={data.comentario_envio}
+                                                onChange={(e) => setData('comentario_envio', e.target.value)}
+                                                placeholder="Describe el motivo de esta respuesta..."
+                                                rows={4}
+                                                className="resize-none"
+                                                required
+                                            />
+                                            <InputError message={errors.comentario_envio} />
+                                        </div>
+                                    </div>
+                                </SectionPanel>
+
+                                <SectionPanel title="Documento adjunto" icon={Upload}>
+                                    <div className="space-y-3">
+                                        <div
+                                            className="border-2 border-dashed border-border rounded-lg px-4 py-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors"
+                                            onClick={() => document.getElementById('archivo-input')?.click()}
+                                        >
+                                            <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                                            <p className="text-sm text-muted-foreground">
+                                                {data.archivo
+                                                    ? <span className="font-medium text-foreground">{data.archivo.name}</span>
+                                                    : <>Haz clic para seleccionar o arrastra el archivo</>
+                                                }
+                                            </p>
+                                            <p className="text-xs text-muted-foreground/60 mt-1">Solo PDF · Máximo 4 MB</p>
+                                        </div>
+                                        <input
+                                            id="archivo-input"
+                                            type="file"
+                                            accept=".pdf,application/pdf"
+                                            className="hidden"
+                                            onChange={(e) => handleFile(e.target.files?.[0] || null)}
+                                        />
+                                        <InputError message={errors.archivo} />
+
+                                        {progress && (
+                                            <div className="space-y-1.5">
+                                                <Progress value={progress.percentage} className="h-1.5" />
+                                                <p className="text-xs text-muted-foreground text-right">{progress.percentage}%</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </SectionPanel>
+                            </>
+                        )}
 
                         <Button
                             type="submit"
                             disabled={processing}
-                            className="w-full bg-blue-600 hover:bg-[var(--secondary-foreground)]/80 text-white h-10"
+                            className="w-full bg-blue-600 hover:bg-[var(--primary)]/90 text-white h-10"
                         >
                             {processing ? (
                                 <span className="flex items-center gap-2">
                                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                                    {isServerProcessing ? 'Enviando...' : 'Subiendo...'}
+                                    Enviando...
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-2">
                                     <Send className="h-3.5 w-3.5" />
-                                    Crear y enviar respuesta
+                                    {data.solo_comentario ? 'Registrar respuesta' : 'Crear y enviar respuesta'}
                                 </span>
                             )}
                         </Button>
@@ -291,33 +356,35 @@ export default function Responder({ movimiento, remitentes }: Props) {
                     {/* Columna derecha — campos automáticos + contexto */}
                     <div className="space-y-4">
 
-                        {/* Campos automáticos */}
-                        <SectionPanel
-                            title="Campos automáticos"
-                            icon={Lock}
-                            badge={
-                                <Badge variant="outline" className="text-[10px] border-[--border] bg-[var(--card)] text-[var(--text)]">
-                                    No editables
-                                </Badge>
-                            }
-                        >
-                            <div className="-mx-0">
-                                <InfoRow icon={Calendar} label="Fecha del oficio">
-                                    {formatDateDisplay(data.fecha_oficio)}
-                                </InfoRow>
-                                <InfoRow icon={User} label="Remitente">
-                                    {remitenteNombre}
-                                </InfoRow>
-                                <InfoRow icon={FileText} label="Tipo">
-                                    <Badge variant="outline" className="text-xs border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
-                                        Interno
+                        {/* Campos automáticos (solo en modo documento) */}
+                        {!data.solo_comentario && (
+                            <SectionPanel
+                                title="Campos automáticos"
+                                icon={Lock}
+                                badge={
+                                    <Badge variant="outline" className="text-[10px] border-[--border] bg-[var(--card)] text-[var(--text)]">
+                                        No editables
                                     </Badge>
-                                </InfoRow>
-                                <InfoRow icon={Tag} label="Palabra clave">
-                                    {data.palabra_clave || '-'}
-                                </InfoRow>
-                            </div>
-                        </SectionPanel>
+                                }
+                            >
+                                <div className="-mx-0">
+                                    <InfoRow icon={Calendar} label="Fecha del oficio">
+                                        {formatDateDisplay(data.fecha_oficio)}
+                                    </InfoRow>
+                                    <InfoRow icon={User} label="Remitente">
+                                        {remitenteNombre}
+                                    </InfoRow>
+                                    <InfoRow icon={FileText} label="Tipo">
+                                        <Badge variant="outline" className="text-xs border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
+                                            Interno
+                                        </Badge>
+                                    </InfoRow>
+                                    <InfoRow icon={Tag} label="Palabra clave">
+                                        {data.palabra_clave || '-'}
+                                    </InfoRow>
+                                </div>
+                            </SectionPanel>
+                        )}
 
                         {/* Contexto del movimiento original */}
                         {movimiento.comentario && (
