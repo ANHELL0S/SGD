@@ -343,12 +343,10 @@ export default function DataTable({
                                     className="animate-fade-in-row bg-[var(--card-background)] "
                                     style={{ animationDelay: `${index * 55}ms` }}
                                 >
-                                    {/* 1. Fecha centrada */}
                                     <TableCell className="text-center text-[12px] text-[var(--secondary-foreground)]/50">
                                         {formatDate(documento.fecha_oficio)}
                                     </TableCell>
 
-                                    {/* 2. Subido por: flex con justify-center */}
                                     <TableCell className="min-w-[220px]">
                                         {documento.user ? (
                                             <div className="flex items-center justify-center gap-3">
@@ -384,7 +382,6 @@ export default function DataTable({
                                         )}
                                     </TableCell>
 
-                                    {/* 3. Referencia centrada */}
                                     <TableCell className="max-w-[180px] text-center">
                                         <div className="mx-auto min-w-0">
                                             <p className="truncate text-[12px] text-[var(--secondary-foreground)]">
@@ -396,7 +393,6 @@ export default function DataTable({
                                         </div>
                                     </TableCell>
 
-                                    {/* 4. Tipo centrado */}
                                     <TableCell className="text-center">
                                         <Badge
                                             variant="outline"
@@ -406,21 +402,15 @@ export default function DataTable({
                                         </Badge>
                                     </TableCell>
 
-                                    {/* 5. Remitente centrado - Ajustado para emparejar */}
                                     <TableCell className="text-center">
-                                        <div className="flex min-h-[40px] flex-col justify-center">
+                                        <div className="flex flex-col justify-center">
                                             <p className="truncate text-[12px] text-[var(--secondary-foreground)]/70">
                                                 {documento.remitente?.nombre ||
                                                     '-'}
                                             </p>
-                                            {/* Espaciador invisible para mantener la misma altura que Referencia si no hay segunda línea */}
-                                            <span className="block text-[11px] leading-none">
-                                                &nbsp;
-                                            </span>
                                         </div>
                                     </TableCell>
 
-                                    {/* 6. Acciones: Cambiado de justify-end a justify-center */}
                                     <TableCell>
                                         <div className="flex justify-center gap-1">
                                             <Button
@@ -483,7 +473,6 @@ export default function DataTable({
                                         </div>
                                     </TableCell>
 
-                                    {/* 7. Enviar centrado */}
                                     {!isAdmin && (
                                         <TableCell>
                                             <div className="flex justify-center">

@@ -18,7 +18,7 @@ class DocumentoFactory extends Factory
             'numero_oficio'    => 'OF-' . $this->faker->unique()->numerify('####') . '-' . date('Y'),
             'asunto'           => $this->faker->sentence(6),
             'fecha_oficio'     => $this->faker->dateTimeBetween('-6 months', 'now')->format('Y-m-d'),
-            'remitente_id'     => $this->faker->randomElement([1, 2, 3, 4]),
+            'remitente_id'     => $this->faker->randomElement([1, 2, 3]), // Solo IDs existentes
             'tipo'             => $this->faker->randomElement(['interno', 'externo']),
             'palabra_clave'    => $this->faker->randomElement(['GESTIÓN', 'SOLICITUD', 'OFICIO', 'REQUERIMIENTO']),
             'archivo'          => 'documentos/prueba_' . $this->faker->numerify('####') . '.pdf',

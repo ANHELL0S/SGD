@@ -279,7 +279,7 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                         )}
                     </CardHeader>
 
-                    <CardContent className="space-y-2">
+                    <CardContent>
                         {/* Filtros */}
                         <form onSubmit={applyFilters} >
                             <div className="flex flex-wrap items-center gap-2">
@@ -431,7 +431,7 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                          <Separator  className='mt-6' />
 
                         {/* Barra: per_page + contador + paginación */}
-                        <div className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between mt-2">
                             <div className="flex items-center gap-2">
                                 <Label className="text-[12px] text-[var(--sidebar-foreground)]/50">
                                     Mostrar
@@ -440,7 +440,7 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                     value={data.per_page}
                                     onValueChange={changePerPage}
                                 >
-                                    <SelectTrigger className="h-8 w-[60px] text-[12px]">
+                                    <SelectTrigger className="h-8 w-[70px] text-[12px]">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -567,10 +567,9 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                                 key={documento.id_documento}
                                                 className="hover:bg-[var(--muted)]/40"
                                             >
-                                                {/* 2. Dueño (Centrado con doble línea) */}
                                                 <TableCell className="min-w-[200px] text-center">
                                                     {documento.user ? (
-                                                        <div className="flex min-h-[40px] flex-col justify-center">
+                                                        <div className="flex min-h-[0px] flex-col justify-center">
                                                             <p className="text-[12px] font-medium text-foreground">
                                                                 {
                                                                     documento
@@ -595,13 +594,11 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                                     )}
                                                 </TableCell>
 
-                                                {/* 3. Remitente */}
                                                 <TableCell className="text-center text-[12px] text-[var(--sidebar-foreground)]/70">
                                                     {documento.remitente
                                                         ?.nombre || '-'}
                                                 </TableCell>
 
-                                                {/* 4. Tipo */}
                                                 <TableCell className="text-center">
                                                     <Badge
                                                         variant="outline"
@@ -611,19 +608,16 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                                                     </Badge>
                                                 </TableCell>
 
-                                                {/* 6. Palabra Clave */}
                                                 <TableCell className="text-center text-[12px] text-[var(--sidebar-foreground)]">
                                                     {documento.palabra_clave || '-'}
                                                 </TableCell>
 
-                                                {/* 7. Eliminado */}
                                                 <TableCell className="text-center text-[12px] text-[var(--sidebar-foreground)]">
                                                     {formatDate(
                                                         documento.deleted_at,
                                                     )}
                                                 </TableCell>
 
-                                                {/* 8. Acciones (Botón restaurar centrado) */}
                                                 <TableCell className="text-center">
                                                     <div className="flex justify-center">
                                                         <Button

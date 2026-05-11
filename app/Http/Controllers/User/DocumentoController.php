@@ -95,7 +95,7 @@ class DocumentoController extends Controller
             ->when($filters['fecha_hasta'] !== '', fn (Builder $query) => $query->whereDate('fecha_oficio', '<=', $filters['fecha_hasta']))
             ->when($filters['con_ocr'], fn (Builder $query) => $query->whereNotNull('contenido_ocr'))
             ->latest('id_documento')
-            ->paginate($perPage, $selectColumns)
+            ->paginate($perPage, $selectColumns)->onEachSide(0)
             ->withQueryString();
 
         return Inertia::render('user/documentos/index', [

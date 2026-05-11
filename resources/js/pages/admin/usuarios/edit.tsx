@@ -500,7 +500,7 @@ export default function Edit({ user, areas, roles }: Props) {
                             asChild
                             type="button"
                             variant="outline"
-                            className="bg-[var(--primary)] text-white hover:bg-primary/90 xs:w-auto"
+                            className="bg-[var(--primary)] text-white hover:bg-primary/90 hover:text-white focus-visible:bg-primary/90 focus-visible:text-white active:bg-primary/95 active:text-white"
                         >
                             <Link href={index()}>Cancelar</Link>
                         </Button>

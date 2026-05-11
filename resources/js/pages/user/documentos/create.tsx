@@ -94,6 +94,17 @@ export default function Create({ remitentes, tipos }: Props) {
             archivo: null,
         });
 
+    // Validación de formulario: todos los campos requeridos deben estar llenos
+    // El botón solo se activa si TODOS los campos requeridos están llenos (no solo el PDF)
+    // El campo numero_oficio ya no es obligatorio
+    const isFormValid =
+        Boolean(data.asunto?.trim()) &&
+        Boolean(data.fecha_oficio?.trim()) &&
+        Boolean(data.remitente_id) &&
+        Boolean(data.tipo) &&
+        Boolean(data.palabra_clave?.trim()) &&
+        Boolean(data.archivo);
+
     const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
     const previewUrlRef = useRef<string | null>(null);
 
@@ -340,7 +351,7 @@ export default function Create({ remitentes, tipos }: Props) {
                         <div className="flex justify-end">
                             <Button
                                 type="submit"
-                                disabled={processing || !data.archivo}
+                                disabled={processing || !isFormValid}
                                 className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all active:scale-[0.98] text-xs"
                             >
                                 {processing ? 'Guardando...' : 'Guardar documento'}

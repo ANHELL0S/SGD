@@ -453,7 +453,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                             value={perPage}
                                             onValueChange={changePerPage}
                                         >
-                                            <SelectTrigger className="h-7 w-[64px] text-xs">
+                                            <SelectTrigger className="h-7 w-[70px] text-xs">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>

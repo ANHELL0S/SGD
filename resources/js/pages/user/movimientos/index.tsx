@@ -4,7 +4,6 @@ import {
     Check,
     CheckCircle,
     Lock,
-    Loader2,
     LockOpen,
     MessageSquare,
     RefreshCw,
@@ -59,7 +58,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { dashboard } from '@/routes';
-
 
 // ============================================================================
 // TIPOS
@@ -169,8 +167,8 @@ type PaginatedExpedientes = {
 
 type Props = {
     expedientesActivos: PaginatedExpedientes;
-    expedientesCerrados: PaginatedExpedientes | null;
-    expedientesVencidos: PaginatedExpedientes | null;
+    expedientesCerrados: PaginatedExpedientes;
+    expedientesVencidos: PaginatedExpedientes;
     resumen: Resumen;
     filters?: {
         busqueda_activos?: string;
@@ -196,13 +194,15 @@ const directionConfig = {
         dotColor: 'bg-blue-400',
         icon: Mail,
         label: 'Entrada',
-        badgeClass: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400',
+        badgeClass:
+            'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400',
     },
     salida: {
         dotColor: 'bg-[var(--secundary-foreground)]/50',
         icon: MailOpen,
         label: 'Salida',
-        badgeClass: 'border-[var(--secundary-foreground)]/20 bg-[var(--secundary-foreground)]/10 text-[var(--secundary-foreground)]/70',
+        badgeClass:
+            'border-[var(--secundary-foreground)]/20 bg-[var(--secundary-foreground)]/10 text-[var(--secundary-foreground)]/70',
     },
 } as const;
 
@@ -496,11 +496,11 @@ const MovimientoCard = ({
     // Color de la línea lateral basado en días hábiles transcurridos
     const getLineColor = () => {
         if (expedienteCerrado) return 'bg-[var(--chart-4)]'; // Color para expediente cerrado
-        if (bloqueado) return 'bg-gray-400';   // >10 días
-        if (dias >= 7) return 'bg-[var(--destructive)]';    // Alta: 7-10 días
+        if (bloqueado) return 'bg-gray-400'; // >10 días
+        if (dias >= 7) return 'bg-[var(--destructive)]'; // Alta: 7-10 días
         if (dias >= 4) return 'bg-[var(--warning)]'; // Media: 4-6 días
-        if (dias >= 0) return 'bg-[var(--primary)]';   // Baja: 1-3 días
-        return '';                              // <1 día: sin color
+        if (dias >= 0) return 'bg-[var(--primary)]'; // Baja: 1-3 días
+        return ''; // <1 día: sin color
     };
 
     const lineColor = getLineColor();
@@ -517,7 +517,8 @@ const MovimientoCard = ({
     // Tooltip para la línea lateral
     const tooltipText = (() => {
         if (expedienteCerrado) return 'Expediente cerrado';
-        if (bloqueado) return `Plazo vencido — ${dias} días hábiles sin respuesta`;
+        if (bloqueado)
+            return `Plazo vencido — ${dias} días hábiles sin respuesta`;
         if (dias < 1) return getRelativeTime(movimiento.fecha_envio);
         return `${dias} día(s) hábil(es) sin respuesta · Prioridad ${urgencyLabel}`;
     })();
@@ -531,7 +532,7 @@ const MovimientoCard = ({
                 'relative overflow-hidden rounded-md border bg-card shadow-none transition-all duration-200 hover:shadow-sm',
                 isActive && 'border-[var(--border)]/50',
                 expedienteCerrado && 'bg-gray-50/50 dark:bg-muted/10',
-                bloqueado && 'bg-gray-50/30 dark:bg-muted/5 opacity-80',
+                bloqueado && 'bg-gray-50/30 opacity-80 dark:bg-muted/5',
                 className,
             )}
         >
@@ -609,26 +610,24 @@ const MovimientoCard = ({
                                             : 'border-[var(--secundary-foreground)]/20 bg-[var(--secundary-foreground)]/10 text-[var(--secundary-foreground)]/70'
                                     }
                                 >
-                                    {movimiento.estado === 'recibido' ? 'Recibido' : 'Enviado'}
+                                    {movimiento.estado === 'recibido'
+                                        ? 'Recibido'
+                                        : 'Enviado'}
+                                </Badge>
+                            ) : movimiento.puede_responder ? (
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                                >
+                                    Pendiente
                                 </Badge>
                             ) : (
-                                movimiento.puede_responder ? (
-                                    <Badge
-                                        variant="outline"
-                                        className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
-                                    >
-                                        Pendiente
-                                    </Badge>
-                                ) : (
-                                    <Badge
-                                        variant="outline"
-                                        className="bg-green-100 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800"
-                                    >
-                                        Recibido
-                                    </Badge>
-                                )
-
-
+                                <Badge
+                                    variant="outline"
+                                    className="border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400"
+                                >
+                                    Recibido
+                                </Badge>
                             )}
                         </div>
                     </div>
@@ -655,14 +654,24 @@ const MovimientoCard = ({
                         <div className="flex items-center gap-1.5 text-muted-foreground/80">
                             <User className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate">
-                                {getFullName(movimiento.remitente?.nombre ?? null, movimiento.remitente?.apellido ?? null)}
+                                {getFullName(
+                                    movimiento.remitente?.nombre ?? null,
+                                    movimiento.remitente?.apellido ?? null,
+                                )}
                             </span>
                             <ArrowRight className="h-3 w-3 shrink-0" />
                             <span className="truncate">
-                                {movimiento.destinatario?.nombre
-                                    ? getFullName(movimiento.destinatario.nombre, movimiento.destinatario.apellido)
-                                    : <span className="italic text-muted-foreground/60">{movimiento.a_area?.nombre ?? 'Área destino'}</span>
-                                }
+                                {movimiento.destinatario?.nombre ? (
+                                    getFullName(
+                                        movimiento.destinatario.nombre,
+                                        movimiento.destinatario.apellido,
+                                    )
+                                ) : (
+                                    <span className="text-muted-foreground/60 italic">
+                                        {movimiento.a_area?.nombre ??
+                                            'Área destino'}
+                                    </span>
+                                )}
                             </span>
                         </div>
                     </div>
@@ -722,7 +731,7 @@ const MovimientoCard = ({
                     )}
 
                     {/* Footer: badges de estado + acciones */}
-                    <div className="flex flex-wrap items-center gap-2 border-t pt-1.5">
+                    <div className="flex flex-wrap items-center gap-2 border-t pt-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                             {movimiento.documento?.movimiento_origen_id && (
                                 <Badge
@@ -736,7 +745,7 @@ const MovimientoCard = ({
                             {movimiento.respuesta_enviada && (
                                 <Badge
                                     variant="outline"
-                                    className="rounded-full border-chart-4/10 bg-background/10 px-2.5 py-0.5 text-xs font-bold text-chart-4  backdrop-blur-sm"
+                                    className="rounded-full border-chart-4/10 bg-background/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 backdrop-blur-sm"
                                 >
                                     <Check className="mr-1 h-3 w-3" />
                                     Respondido
@@ -762,7 +771,13 @@ const MovimientoCard = ({
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
-export default function Index({ expedientesActivos, expedientesCerrados, expedientesVencidos, resumen, filters }: Props) {
+export default function Index({
+    expedientesActivos,
+    expedientesCerrados,
+    expedientesVencidos,
+    resumen,
+    filters,
+}: Props) {
     const { auth } = usePage().props as {
         auth?: { user?: { rol?: string; area_id?: number | null } | null };
     };
@@ -770,50 +785,102 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
     useMovimientosRealTime(auth?.user?.area_id, auth?.user?.rol);
 
     // ── Estado por tab ────────────────────────────────────────────────────────
-    const [activosState, setActivosState]     = useState<ExpedienteGroup[]>(expedientesActivos.data);
-    const [cerradosState, setCerradosState]   = useState<ExpedienteGroup[]>(expedientesCerrados?.data ?? []);
-    const [vencidosState, setVencidosState]   = useState<ExpedienteGroup[]>(expedientesVencidos?.data ?? []);
-    const [cerradosLoaded, setCerradosLoaded] = useState(!!expedientesCerrados);
-    const [cerradosLoading, setCerradosLoading] = useState(false);
-    const [vencidosLoaded, setVencidosLoaded] = useState(!!expedientesVencidos);
-    const [vencidosLoading, setVencidosLoading] = useState(false);
-    const [loadingExpediente, setLoadingExpediente] = useState<number | null>(null);
-    const [activeTab, setActiveTab] = useState(filters?.tab === 'cerrados' ? 'cerrados' : filters?.tab === 'vencidos' ? 'vencidos' : 'activos');
-    const [perPage, setPerPage] = useState(filters?.per_page ?? String(expedientesActivos.per_page ?? 5));
-    const [busquedaActivos,  setBusquedaActivos]  = useState(filters?.busqueda_activos  ?? '');
-    const [busquedaCerrados, setBusquedaCerrados] = useState(filters?.busqueda_cerrados ?? '');
-    const [busquedaVencidos, setBusquedaVencidos] = useState(filters?.busqueda_vencidos ?? '');
-    const busqueda = activeTab === 'cerrados' ? busquedaCerrados : activeTab === 'vencidos' ? busquedaVencidos : busquedaActivos;
+    const [activosState, setActivosState] = useState<ExpedienteGroup[]>(
+        expedientesActivos.data,
+    );
+    const [cerradosState, setCerradosState] = useState<ExpedienteGroup[]>(
+        expedientesCerrados.data,
+    );
+    const [vencidosState, setVencidosState] = useState<ExpedienteGroup[]>(
+        expedientesVencidos.data,
+    );
+    const [loadingExpediente, setLoadingExpediente] = useState<number | null>(
+        null,
+    );
+    const [activeTab, setActiveTab] = useState(
+        filters?.tab === 'cerrados'
+            ? 'cerrados'
+            : filters?.tab === 'vencidos'
+              ? 'vencidos'
+              : 'activos',
+    );
+    const [perPage, setPerPage] = useState(
+        filters?.per_page ?? String(expedientesActivos.per_page ?? 5),
+    );
+    const [busquedaActivos, setBusquedaActivos] = useState(
+        filters?.busqueda_activos ?? '',
+    );
+    const [busquedaCerrados, setBusquedaCerrados] = useState(
+        filters?.busqueda_cerrados ?? '',
+    );
+    const [busquedaVencidos, setBusquedaVencidos] = useState(
+        filters?.busqueda_vencidos ?? '',
+    );
+    const busqueda =
+        activeTab === 'cerrados'
+            ? busquedaCerrados
+            : activeTab === 'vencidos'
+              ? busquedaVencidos
+              : busquedaActivos;
     const [refreshing, setRefreshing] = useState(false);
     const openValuesRef = useRef<Record<string, string[]>>({});
     const busquedaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Sincronizar estados locales cuando cambian las props (paginación, recarga)
-    useEffect(() => { setActivosState(expedientesActivos.data); }, [expedientesActivos.data]);
     useEffect(() => {
-        if (expedientesCerrados) setCerradosState(expedientesCerrados.data);
-        setCerradosLoading(false);
-    }, [expedientesCerrados]);
+        setActivosState(expedientesActivos.data);
+    }, [expedientesActivos.data]);
     useEffect(() => {
-        if (expedientesVencidos) setVencidosState(expedientesVencidos.data);
-        setVencidosLoading(false);
-    }, [expedientesVencidos]);
+        setCerradosState(expedientesCerrados.data);
+    }, [expedientesCerrados.data]);
+    useEffect(() => {
+        setVencidosState(expedientesVencidos.data);
+    }, [expedientesVencidos.data]);
+
+    // Sincronizar tab activo cuando el backend redirige con un tab específico (ej. al cerrar conversación)
+    useEffect(() => {
+        if (
+            filters?.tab === 'cerrados' ||
+            filters?.tab === 'vencidos' ||
+            filters?.tab === 'activos'
+        ) {
+            setActiveTab(filters.tab);
+        }
+    }, [filters?.tab]);
 
     // ── Paginación por tab ────────────────────────────────────────────────────
     const getPag = (pag: PaginatedExpedientes | null) => {
         const links = pag?.links ?? [];
-        return { prev: links[0] ?? null, next: links[links.length - 1] ?? null, pages: links.slice(1, -1) };
+        return {
+            prev: links[0] ?? null,
+            next: links[links.length - 1] ?? null,
+            pages: links.slice(1, -1),
+        };
     };
-    const activosPag  = getPag(expedientesActivos);
+    const activosPag = getPag(expedientesActivos);
     const cerradosPag = getPag(expedientesCerrados);
     const vencidosPag = getPag(expedientesVencidos);
 
-    const currentPag   = activeTab === 'cerrados' ? cerradosPag  : activeTab === 'vencidos' ? vencidosPag  : activosPag;
-    const currentPagData = activeTab === 'cerrados' ? expedientesCerrados : activeTab === 'vencidos' ? expedientesVencidos : expedientesActivos;
+    const currentPag =
+        activeTab === 'cerrados'
+            ? cerradosPag
+            : activeTab === 'vencidos'
+              ? vencidosPag
+              : activosPag;
+    const currentPagData =
+        activeTab === 'cerrados'
+            ? expedientesCerrados
+            : activeTab === 'vencidos'
+              ? expedientesVencidos
+              : expedientesActivos;
 
     const goToPaginationUrl = (url: string | null): void => {
         if (!url) return;
-        router.visit(url, { preserveScroll: true, preserveState: true, replace: true });
+        router.visit(url, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        });
     };
 
     const changePerPage = (value: string): void => {
@@ -823,22 +890,28 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
             {
                 per_page: value,
                 activos_page: 1,
-                ...(busquedaActivos  ? { busqueda_activos:  busquedaActivos  } : {}),
-                ...(busquedaCerrados ? { busqueda_cerrados: busquedaCerrados } : {}),
-                ...(busquedaVencidos ? { busqueda_vencidos: busquedaVencidos } : {}),
+                ...(busquedaActivos
+                    ? { busqueda_activos: busquedaActivos }
+                    : {}),
+                ...(busquedaCerrados
+                    ? { busqueda_cerrados: busquedaCerrados }
+                    : {}),
+                ...(busquedaVencidos
+                    ? { busqueda_vencidos: busquedaVencidos }
+                    : {}),
             },
             { preserveScroll: true, preserveState: true, replace: true },
         );
     };
 
     const handleBusqueda = (value: string): void => {
-        if (activeTab === 'activos')  setBusquedaActivos(value);
+        if (activeTab === 'activos') setBusquedaActivos(value);
         else if (activeTab === 'cerrados') setBusquedaCerrados(value);
         else setBusquedaVencidos(value);
 
         if (busquedaTimer.current) clearTimeout(busquedaTimer.current);
         busquedaTimer.current = setTimeout(() => {
-            const ba = activeTab === 'activos'  ? value : busquedaActivos;
+            const ba = activeTab === 'activos' ? value : busquedaActivos;
             const bc = activeTab === 'cerrados' ? value : busquedaCerrados;
             const bv = activeTab === 'vencidos' ? value : busquedaVencidos;
             router.get(
@@ -846,10 +919,10 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                 {
                     per_page: perPage,
                     tab: activeTab,
-                    ...(activeTab === 'activos'  ? { activos_page:  1 } : {}),
+                    ...(activeTab === 'activos' ? { activos_page: 1 } : {}),
                     ...(activeTab === 'cerrados' ? { cerrados_page: 1 } : {}),
                     ...(activeTab === 'vencidos' ? { vencidos_page: 1 } : {}),
-                    ...(ba ? { busqueda_activos:  ba } : {}),
+                    ...(ba ? { busqueda_activos: ba } : {}),
                     ...(bc ? { busqueda_cerrados: bc } : {}),
                     ...(bv ? { busqueda_vencidos: bv } : {}),
                 },
@@ -860,25 +933,44 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
 
     const handleTabChange = (tab: string): void => {
         setActiveTab(tab);
-        if (tab === 'cerrados' && !cerradosLoaded) {
-            setCerradosLoaded(true);
-            setCerradosLoading(true);
-            router.reload({ only: ['expedientesCerrados'] });
-        }
-        if (tab === 'vencidos' && !vencidosLoaded) {
-            setVencidosLoaded(true);
-            setVencidosLoading(true);
-            router.reload({ only: ['expedientesVencidos'] });
-        }
     };
 
     const refreshMovimientos = (): void => {
+        if (refreshing) return;
         setRefreshing(true);
-        const only: string[] = ['expedientesActivos', 'resumen'];
-        if (cerradosLoaded) only.push('expedientesCerrados');
-        if (vencidosLoaded) only.push('expedientesVencidos');
-        router.reload({ only });
-        setTimeout(() => setRefreshing(false), 1500);
+
+        let finished = false;
+        let minTimeReached = false;
+        let succeeded = false;
+        const release = () => {
+            if (finished && minTimeReached) {
+                setRefreshing(false);
+                if (succeeded) {
+                    toast.success('Movimientos actualizados correctamente');
+                }
+            }
+        };
+
+        setTimeout(() => {
+            minTimeReached = true;
+            release();
+        }, 1500);
+
+        router.reload({
+            only: [
+                'expedientesActivos',
+                'expedientesCerrados',
+                'expedientesVencidos',
+                'resumen',
+            ],
+            onSuccess: () => {
+                succeeded = true;
+            },
+            onFinish: () => {
+                finished = true;
+                release();
+            },
+        });
     };
 
     // ── Ver más movimientos de un grupo ──────────────────────────────────────
@@ -889,15 +981,28 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
     ): Promise<void> => {
         setLoadingExpediente(expedienteId);
         try {
-            const params = new URLSearchParams({ grupo: `exp:${expedienteId}`, offset: String(offset), limit: '2' });
-            const res = await fetch(`/user/movimientos-cargar-mas?${params.toString()}`);
+            const params = new URLSearchParams({
+                grupo: `exp:${expedienteId}`,
+                offset: String(offset),
+                limit: '2',
+            });
+            const res = await fetch(
+                `/user/movimientos-cargar-mas?${params.toString()}`,
+            );
             if (!res.ok) throw new Error();
             const data = await res.json();
             setState((prev) =>
                 prev.map((e) =>
                     e.expediente_id !== expedienteId
                         ? e
-                        : { ...e, movimientos: [...e.movimientos, ...data.movimientos], has_more: data.has_more },
+                        : {
+                              ...e,
+                              movimientos: [
+                                  ...e.movimientos,
+                                  ...data.movimientos,
+                              ],
+                              has_more: data.has_more,
+                          },
                 ),
             );
         } catch {
@@ -914,7 +1019,11 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
         setState((prev) =>
             prev.map((exp) =>
                 exp.expediente_id === expedienteId
-                    ? { ...exp, movimientos: exp.movimientos.slice(0, 2), has_more: true }
+                    ? {
+                          ...exp,
+                          movimientos: exp.movimientos.slice(0, 2),
+                          has_more: true,
+                      }
                     : exp,
             ),
         );
@@ -927,7 +1036,9 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
         if (added) {
             setTimeout(() => {
                 const item = document.getElementById(`exp-${added}`);
-                const content = item?.querySelector('[data-slot="accordion-content"]') ?? item;
+                const content =
+                    item?.querySelector('[data-slot="accordion-content"]') ??
+                    item;
                 content?.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }, 320);
         }
@@ -945,32 +1056,43 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
             return (
                 <div className="rounded-lg border border-dashed bg-muted/20 p-12 text-center">
                     <FolderOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
-                    <p className="mt-3 text-sm font-medium text-muted-foreground">{emptyTitle}</p>
-                    <p className="text-xs text-muted-foreground/60">{emptySubtitle}</p>
+                    <p className="mt-3 text-sm font-medium text-muted-foreground">
+                        {emptyTitle}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60">
+                        {emptySubtitle}
+                    </p>
                 </div>
             );
         }
 
         return (
-            <Accordion type="multiple" defaultValue={[]} className="space-y-2 " onValueChange={(v) => handleAccordionChange(tabKey, v)}>
-                {grupos.map((expediente, index) => (
+            <Accordion
+                type="multiple"
+                defaultValue={[]}
+                className="space-y-2"
+                onValueChange={(v) => handleAccordionChange(tabKey, v)}
+            >
+                {grupos.map((expediente) => (
                     <AccordionItem
                         id={`exp-${expediente.expediente_id}`}
                         key={expediente.expediente_id}
                         value={String(expediente.expediente_id)}
-                        className="animate-slide-in-up rounded-lg border bg-card px-4"
-                        style={{ animationDelay: `${index * 70}ms` }}
+                        className="rounded-lg border bg-card px-4"
                     >
                         <AccordionTrigger className="py-3 hover:no-underline">
                             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
                                 <div className="relative shrink-0">
                                     <FolderOpen className="h-4 w-4 text-blue-600" />
                                     {(() => {
-                                        const notifCount = expediente.estado === 'abierto'
-                                            ? expediente.movimientos.filter(isNotificacionActiva).length
-                                            : 0;
+                                        const notifCount =
+                                            expediente.estado === 'abierto'
+                                                ? expediente.movimientos.filter(
+                                                      isNotificacionActiva,
+                                                  ).length
+                                                : 0;
                                         return notifCount > 0 ? (
-                                            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white leading-none">
+                                            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[8px] leading-none font-bold text-white">
                                                 {notifCount}
                                             </span>
                                         ) : null;
@@ -979,7 +1101,7 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                 <span className="min-w-0 truncate text-sm font-medium text-muted-foreground">
                                     {expediente.asunto_resumen}
                                 </span>
-                                <div className="ml-auto flex shrink-0 items-center gap-4 text-xs">
+                                <div className="ml-auto flex shrink-0 items-center gap-2 text-xs">
                                     <Badge
                                         variant="outline"
                                         className={
@@ -988,28 +1110,53 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                                 : 'bg-[var(--secundary-foreground)] text-[var(--secundary-foreground)]/70'
                                         }
                                     >
-                                        {expediente.estado === 'abierto' ? 'Activo' : 'Cerrado'}
+                                        {expediente.estado === 'abierto'
+                                            ? 'Activo'
+                                            : 'Cerrado'}
                                     </Badge>
-                                    {expediente.estado === 'abierto' && expediente.tiene_respuesta && auth?.user?.area_id === expediente.area_creadora_id && (
-                                        <Button
-                                            type="button" size="sm" variant="outline"
-                                            className="h-6 border-red-200 bg-red-50 px-2 text-[11px] text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
-                                            onClick={(e) => { e.stopPropagation(); router.patch(cerrarExpediente.url(expediente.expediente_id)); }}
-                                        >
-                                            <Lock className="mr-1 h-3 w-3" />
-                                            Cerrar Conversación
-                                        </Button>
-                                    )}
-                                    {expediente.estado === 'cerrado' && auth?.user?.area_id === expediente.area_creadora_id && (
-                                        <Button
-                                            type="button" size="sm" variant="outline"
-                                            className="h-6 border-green-200 bg-green-50 px-2 text-[11px] text-green-700 hover:bg-green-100 hover:text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400 dark:hover:bg-green-950/60"
-                                            onClick={(e) => { e.stopPropagation(); router.patch(abrirExpediente.url(expediente.expediente_id)); }}
-                                        >
-                                            <LockOpen className="mr-1 h-3 w-3" />
-                                            Abrir Conversación
-                                        </Button>
-                                    )}
+                                    {expediente.estado === 'abierto' &&
+                                        expediente.tiene_respuesta &&
+                                        auth?.user?.area_id ===
+                                            expediente.area_creadora_id && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-6 border-red-200 bg-red-50 px-2 text-[11px] text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    router.patch(
+                                                        cerrarExpediente.url(
+                                                            expediente.expediente_id,
+                                                        ),
+                                                    );
+                                                }}
+                                            >
+                                                <Lock className="mr-1 h-3 w-3" />
+                                                Cerrar Conversación
+                                            </Button>
+                                        )}
+                                    {expediente.estado === 'cerrado' &&
+                                        auth?.user?.area_id ===
+                                            expediente.area_creadora_id && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-6 border-green-200 bg-green-50 px-2 text-[11px] text-green-700 hover:bg-green-100 hover:text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400 dark:hover:bg-green-950/60"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    router.patch(
+                                                        abrirExpediente.url(
+                                                            expediente.expediente_id,
+                                                        ),
+                                                    );
+                                                }}
+                                            >
+                                                <LockOpen className="mr-1 h-3 w-3" />
+                                                Abrir Conversación
+                                            </Button>
+                                        )}
                                 </div>
                             </div>
                         </AccordionTrigger>
@@ -1022,33 +1169,58 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                         movimiento={movimiento}
                                         processing={false}
                                         expedienteEstado={expediente.estado}
-                                        showNotificationDot={movimiento.puede_responder && expediente.estado === 'abierto'}
+                                        showNotificationDot={
+                                            movimiento.puede_responder &&
+                                            expediente.estado === 'abierto'
+                                        }
                                     />
                                 ))}
 
-                                {(expediente.has_more || expediente.movimientos.length > 2) && (
+                                {(expediente.has_more ||
+                                    expediente.movimientos.length > 2) && (
                                     <div className="flex gap-2 pt-2">
                                         {expediente.has_more && (
                                             <Button
-                                                type="button" size="sm" variant="outline"
-                                                disabled={loadingExpediente === expediente.expediente_id}
-                                                onClick={() => handleVerMas(expediente.expediente_id, expediente.movimientos.length, setState)}
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={
+                                                    loadingExpediente ===
+                                                    expediente.expediente_id
+                                                }
+                                                onClick={() =>
+                                                    handleVerMas(
+                                                        expediente.expediente_id,
+                                                        expediente.movimientos
+                                                            .length,
+                                                        setState,
+                                                    )
+                                                }
                                             >
-                                                {loadingExpediente === expediente.expediente_id ? <Spinner className="mr-2" /> : null}
+                                                {loadingExpediente ===
+                                                expediente.expediente_id ? (
+                                                    <Spinner className="mr-2" />
+                                                ) : null}
                                                 Ver más movimientos
                                             </Button>
                                         )}
                                         {expediente.movimientos.length > 2 && (
                                             <Button
-                                                type="button" size="sm" variant="ghost"
-                                                onClick={() => handleOcultar(expediente.expediente_id, setState)}
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    handleOcultar(
+                                                        expediente.expediente_id,
+                                                        setState,
+                                                    )
+                                                }
                                             >
                                                 Ocultar
                                             </Button>
                                         )}
                                     </div>
                                 )}
-
                             </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -1056,13 +1228,6 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
             </Accordion>
         );
     };
-
-    const LoadingTab = () => (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            <span className="text-sm">Cargando...</span>
-        </div>
-    );
 
     return (
         <>
@@ -1072,39 +1237,72 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                 {/* Header */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 className="text-xl leading-tight font-semibold">Mis movimientos por expediente</h2>
-                        <p className="text-xs text-muted-foreground">
-                            Aquí podrás revisar el estado de tus movimientos, responder a los pendientes y gestionar tus expedientes activos.
+                        <h2 className="text-xl leading-tight font-semibold">
+                            Mis movimientos por expediente
+                        </h2>
+                        <p className="mt-2 text-[12px] leading-normal text-muted-foreground">
+                            <span className="font-bold text-muted-foreground">
+                                Línea lateral (días hábiles):
+                            </span>{' '}
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-0.5 rounded-full bg-blue-400" />{' '}
+                                Baja: 1-3
+                            </span>
+                            {' - '}
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-0.5 rounded-full bg-orange-400" />{' '}
+                                Media: 4-6
+                            </span>
+                            {' - '}
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-0.5 rounded-full bg-red-500" />{' '}
+                                Alta: 7-10
+                            </span>
+                            {' - '}
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-0.5 rounded-full bg-gray-400" />{' '}
+                                Bloqueado: +10
+                            </span>
+                            {' - '}
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-0.5 rounded-full bg-green-500" />{' '}
+                                Cerrado
+                            </span>
                         </p>
                     </div>
-                    <Button type="button" size="sm" variant="outline" onClick={refreshMovimientos}>
-                        <RefreshCw className={cn(
-                            'h-3.5 w-3.5 transition-transform',
-                            refreshing ? 'duration-[1500ms] rotate-[360deg]' : 'duration-0',
-                        )} />
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={refreshMovimientos}
+                        disabled={refreshing}
+                    >
+                        <RefreshCw
+                            className={cn(
+                                'h-3.5 w-3.5 transition-transform',
+                                refreshing
+                                    ? 'rotate-[360deg] duration-[1500ms]'
+                                    : 'duration-0',
+                            )}
+                        />
                         Actualizar
                     </Button>
                 </div>
 
-                {/* Leyenda */}
-                <div className="space-y-1.5 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <span className="font-medium text-foreground">Línea lateral (días hábiles):</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-1 rounded-full bg-blue-400" />Baja: 1-3 días</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-1 rounded-full bg-orange-400" />Media: 4-6 días</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-1 rounded-full bg-red-500" />Alta: 7-10 días</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-1 rounded-full bg-gray-400" />&gt; 10 días (bloqueado)</span>
-                        <span className="flex items-center gap-1.5"><span className="h-2.5 w-1 rounded-full bg-green-500" />Expediente cerrado</span>
-                    </div>
-                </div>
-
                 {/* Tabs */}
-                <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={handleTabChange}
+                    className="w-full"
+                >
                     <div className="space-y-4">
                         {/* Fila 1: tabs + buscador */}
                         <div className="flex items-center">
                             <TabsList>
-                                <TabsTrigger value="activos" className="gap-2 text-xs">
+                                <TabsTrigger
+                                    value="activos"
+                                    className="gap-2 text-xs"
+                                >
                                     Activos
                                     {resumen.expedientes_activos > 0 && (
                                         <span className="rounded-full border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 shadow-sm backdrop-blur-sm">
@@ -1112,7 +1310,10 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                         </span>
                                     )}
                                 </TabsTrigger>
-                                <TabsTrigger value="cerrados" className="gap-2 text-xs">
+                                <TabsTrigger
+                                    value="cerrados"
+                                    className="gap-2 text-xs"
+                                >
                                     Cerrados
                                     {resumen.expedientes_cerrados > 0 && (
                                         <span className="rounded-full border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -1120,7 +1321,10 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                         </span>
                                     )}
                                 </TabsTrigger>
-                                <TabsTrigger value="vencidos" className="gap-2 text-xs">
+                                <TabsTrigger
+                                    value="vencidos"
+                                    className="gap-2 text-xs"
+                                >
                                     Vencidos
                                     {resumen.expedientes_vencidos > 0 && (
                                         <span className="rounded-full border border-destructive/20 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
@@ -1133,27 +1337,33 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                             <div className="mx-4 h-6 border-l border-border/50" />
 
                             <div className="flex items-center gap-2">
-                                <Label className="text-xs font-medium text-muted-foreground">Total:</Label>
+                                <Label className="text-xs font-medium text-muted-foreground">
+                                    Total:
+                                </Label>
                                 <span className="text-xs text-muted-foreground">
-                                    {resumen.expedientes_activos + resumen.expedientes_cerrados + resumen.expedientes_vencidos}
+                                    {resumen.expedientes_activos +
+                                        resumen.expedientes_cerrados +
+                                        resumen.expedientes_vencidos}
                                 </span>
                             </div>
 
                             {/* Buscador */}
                             <div className="group relative ml-auto flex items-center">
-                                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary transition-colors group-focus-within:text-blue-500" />
+                                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-primary transition-colors group-focus-within:text-blue-500" />
                                 <input
                                     type="text"
                                     placeholder="Buscar por asunto..."
                                     value={busqueda}
-                                    onChange={(e) => handleBusqueda(e.target.value)}
-                                    className="h-9 w-[300px] rounded-lg border border-border/50 bg-background pl-10 pr-8 text-[12px] shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-offset-0"
+                                    onChange={(e) =>
+                                        handleBusqueda(e.target.value)
+                                    }
+                                    className="h-9 w-[300px] rounded-lg border border-border/50 bg-background pr-8 pl-10 text-[12px] shadow-sm transition-colors focus:ring-1 focus:ring-blue-500 focus:ring-offset-0 focus:outline-none"
                                 />
                                 {busqueda && (
                                     <button
                                         type="button"
                                         onClick={() => handleBusqueda('')}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                     >
                                         <X className="size-3.5" />
                                     </button>
@@ -1164,10 +1374,15 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                         <Separator className="mx-auto !w-[90%] bg-border/40" />
 
                         {/* Fila 2: select + paginación del tab activo */}
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+                        <div className="flex flex-wrap items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Label className="text-xs font-medium text-muted-foreground">Mostrar</Label>
-                                <Select value={perPage} onValueChange={changePerPage}>
+                                <Label className="text-xs font-medium text-muted-foreground">
+                                    Mostrar
+                                </Label>
+                                <Select
+                                    value={perPage}
+                                    onValueChange={changePerPage}
+                                >
                                     <SelectTrigger className="!h-8 w-[65px] text-[12px]">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -1177,7 +1392,9 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                         <SelectItem value="10">10</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <Label className="text-xs font-medium text-muted-foreground">Por página</Label>
+                                <Label className="text-xs font-medium text-muted-foreground">
+                                    Por página
+                                </Label>
                             </div>
 
                             <Pagination className="mx-0 w-auto justify-end">
@@ -1190,27 +1407,70 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                                     <PaginationItem>
                                         <PaginationPrevious
                                             href={currentPag.prev?.url ?? '#'}
-                                            onClick={(e) => { e.preventDefault(); goToPaginationUrl(currentPag.prev?.url ?? null); }}
-                                            className={!currentPag.prev?.url ? 'pointer-events-none opacity-50' : ''}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                goToPaginationUrl(
+                                                    currentPag.prev?.url ??
+                                                        null,
+                                                );
+                                            }}
+                                            className={
+                                                !currentPag.prev?.url
+                                                    ? 'pointer-events-none opacity-50'
+                                                    : ''
+                                            }
                                         />
                                     </PaginationItem>
-                                    {currentPag.pages.map((link: PaginationLinkItem) => (
-                                        <PaginationItem key={`${link.label}-${link.url ?? 'null'}`}>
-                                            <PaginationLink
-                                                href={link.url ?? '#'}
-                                                isActive={link.active}
-                                                onClick={(e) => { e.preventDefault(); goToPaginationUrl(link.url); }}
-                                                className={!link.url ? 'pointer-events-none opacity-50' : ''}
+                                    {currentPag.pages.map(
+                                        (link: PaginationLinkItem) => (
+                                            <PaginationItem
+                                                key={`${link.label}-${link.url ?? 'null'}`}
                                             >
-                                                {link.label.replace('&laquo;', '').replace('&raquo;', '').replace('pagination.previous', '').replace('pagination.next', '')}
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                    ))}
+                                                <PaginationLink
+                                                    href={link.url ?? '#'}
+                                                    isActive={link.active}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        goToPaginationUrl(
+                                                            link.url,
+                                                        );
+                                                    }}
+                                                    className={
+                                                        !link.url
+                                                            ? 'pointer-events-none opacity-50'
+                                                            : ''
+                                                    }
+                                                >
+                                                    {link.label
+                                                        .replace('&laquo;', '')
+                                                        .replace('&raquo;', '')
+                                                        .replace(
+                                                            'pagination.previous',
+                                                            '',
+                                                        )
+                                                        .replace(
+                                                            'pagination.next',
+                                                            '',
+                                                        )}
+                                                </PaginationLink>
+                                            </PaginationItem>
+                                        ),
+                                    )}
                                     <PaginationItem>
                                         <PaginationNext
                                             href={currentPag.next?.url ?? '#'}
-                                            onClick={(e) => { e.preventDefault(); goToPaginationUrl(currentPag.next?.url ?? null); }}
-                                            className={!currentPag.next?.url ? 'pointer-events-none opacity-50' : ''}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                goToPaginationUrl(
+                                                    currentPag.next?.url ??
+                                                        null,
+                                                );
+                                            }}
+                                            className={
+                                                !currentPag.next?.url
+                                                    ? 'pointer-events-none opacity-50'
+                                                    : ''
+                                            }
                                         />
                                     </PaginationItem>
                                 </PaginationContent>
@@ -1218,14 +1478,32 @@ export default function Index({ expedientesActivos, expedientesCerrados, expedie
                         </div>
                     </div>
 
-                    <TabsContent value="activos" className="mt-4 ">
-                        {renderExpedientes(activosState, setActivosState, 'No tienes expedientes activos', 'Los expedientes activos aparecerán aquí.', 'activos')}
+                    <TabsContent value="activos" className="mt-4">
+                        {renderExpedientes(
+                            activosState,
+                            setActivosState,
+                            'No tienes expedientes activos',
+                            'Los expedientes activos aparecerán aquí.',
+                            'activos',
+                        )}
                     </TabsContent>
-                    <TabsContent value="cerrados" className="mt-4">
-                        {cerradosLoading ? <LoadingTab /> : renderExpedientes(cerradosState, setCerradosState, 'No tienes expedientes cerrados', 'Los expedientes cerrados aparecerán aquí.', 'cerrados')}
+                    <TabsContent value="cerrados" className="mt-2">
+                        {renderExpedientes(
+                            cerradosState,
+                            setCerradosState,
+                            'No tienes expedientes cerrados',
+                            'Los expedientes cerrados aparecerán aquí.',
+                            'cerrados',
+                        )}
                     </TabsContent>
                     <TabsContent value="vencidos" className="mt-4">
-                        {vencidosLoading ? <LoadingTab /> : renderExpedientes(vencidosState, setVencidosState, 'No tienes expedientes vencidos', 'Los expedientes vencidos aparecerán aquí.', 'vencidos')}
+                        {renderExpedientes(
+                            vencidosState,
+                            setVencidosState,
+                            'No tienes expedientes vencidos',
+                            'Los expedientes vencidos aparecerán aquí.',
+                            'vencidos',
+                        )}
                     </TabsContent>
                 </Tabs>
             </div>

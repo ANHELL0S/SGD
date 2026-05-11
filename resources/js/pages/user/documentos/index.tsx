@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { toast } from 'sonner';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -199,6 +200,9 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
         router.reload({
             only: ['documentos', 'filters', 'remitentes'],
         });
+        setTimeout(() => {
+            toast.success('Documentos actualizados correctamente');
+        }, 1200);
     };
 
     const paginationLinks = documentos.links ?? [];
@@ -222,11 +226,6 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
                                         ? 'Documentos del sistema'
                                         : 'Mis documentos'}
                                 </h1>
-                                <p className="text-sm text-xs text-muted-foreground">
-                                    {isAdmin
-                                        ? 'Listado global de documentos con su respectivo dueño.'
-                                        : 'Historial de documentos que has subido al sistema.'}
-                                </p>
                             </div>
                             {!isAdmin && (
                                 <Button
@@ -244,14 +243,14 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
 
                         <form
                             onSubmit={applyFilters}
-                            className="mt-6 space-y-4"
+                            className="mt-2 space-y-4"
                         >
                             {/* Buscador Principal */}
                             <div className="group relative">
                                 <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-primary transition-colors group-focus-within:text-blue-500" />
                                 <Input
                                     id="texto_ocr"
-                                    placeholder="Buscar en contenido OCR, número de oficio, asunto... (soporta &quot;frases exactas&quot; y -exclusiones)"
+                                    placeholder="Buscar en contenido OCR, número de oficio, asunto... "
                                     value={data.texto_ocr}
                                     onChange={(e) => handleOcrBusqueda(e.target.value)}
                                     className="h-9 rounded-lg border-border/50 bg-background pl-10 text-[13px] shadow-sm focus-visible:ring-1"
@@ -273,7 +272,7 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
                                             setData('tipo', v)
                                         }
                                     >
-                                        <SelectTrigger className="h-8 w-[110px] rounded-md border-border/50 bg-background text-[12px]">
+                                        <SelectTrigger className="!h-8 w-[110px] rounded-md border-border/50 bg-background text-[12px]">
                                             <SelectValue placeholder="Tipo" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -292,7 +291,7 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
                                             setData('remitente_id', v)
                                         }
                                     >
-                                        <SelectTrigger className="h-8 w-[140px] rounded-md border-border/50 bg-background text-[12px]">
+                                        <SelectTrigger className="!h-8 w-[140px] rounded-md border-border/50 bg-background text-[12px]">
                                             <SelectValue placeholder="Remitente" />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-[200px]">
@@ -460,7 +459,6 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
                         </form>
                     </CardHeader>
 
-                    <Separator className="mx-auto !w-[90%] bg-border/40" />
 
                     <CardContent>
                         <div className="mb-4 flex flex-col gap-4 border-border/40 md:flex-row md:items-center md:justify-between">
@@ -473,7 +471,7 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
                                     value={data.per_page}
                                     onValueChange={changePerPage}
                                 >
-                                    <SelectTrigger className="h-8 w-[65px] border-border/50 bg-transparent text-[12px] font-medium shadow-none focus:ring-1">
+                                    <SelectTrigger className="!h-8 !w-[70px] border-border/50 bg-transparent text-[12px] font-medium shadow-none focus:ring-1">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className=''>

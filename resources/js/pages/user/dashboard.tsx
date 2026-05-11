@@ -13,9 +13,12 @@ import {
 } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Clock, ArrowRightLeft, CheckCircle2, ArrowRight } from 'lucide-react';
+import { FileText, Clock, ArrowRightLeft, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
+// Utilidad local para concatenar clases (igual que en movimientos)
+const cn = (...classes: (string | boolean | undefined | null)[]): string => {
+    return classes.filter(Boolean).join(' ');
+};
 import { dashboard } from '@/routes';
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Periodo = 'semana' | 'mes' | 'año' | 'todos';
@@ -114,7 +117,45 @@ const tipoConfig = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+
+import { useState } from 'react';
+import { toast } from 'sonner';
+
 export default function UserDashboard({ stats, porEstado, porTipo, porMes, periodoSeleccionado, ultimosDocumentos }: Props) {
+    const [refreshing, setRefreshing] = useState(false);
+
+    const refreshMovimientos = (): void => {
+        if (refreshing) return;
+        setRefreshing(true);
+
+        let finished = false;
+        let minTimeReached = false;
+        let succeeded = false;
+        const release = () => {
+            if (finished && minTimeReached) {
+                setRefreshing(false);
+                if (succeeded) {
+                    toast.success('Dashboard actualizado correctamente');
+                }
+            }
+        };
+
+        setTimeout(() => {
+            minTimeReached = true;
+            release();
+        }, 1500);
+
+        router.reload({
+            only: ['stats', 'porEstado', 'porTipo', 'porMes', 'ultimosDocumentos'],
+            onSuccess: () => {
+                succeeded = true;
+            },
+            onFinish: () => {
+                finished = true;
+                release();
+            },
+        });
+    };
     // Si el backend no envía periodoSeleccionado, usar 'todos' por defecto
     const periodo = periodoSeleccionado ?? 'todos';
     const desc = PERIODO_DESC[periodo];
@@ -166,6 +207,7 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, perio
                         Bienvenido de nuevo, {nombre || apellido ? ` ${nombre} ${apellido}` : ''}
                     </h1>
 
+                    <div className="flex items-center gap-2">
                     <div className="flex gap-1 rounded-md border p-0.5">
                                     {PERIODOS.map(({ key, label }) => (
                                         <Button
@@ -178,6 +220,14 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, perio
                                             {label}
                                         </Button>
                                     ))}
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={refreshMovimientos} disabled={refreshing}>
+                        <RefreshCw className={cn(
+                            'h-3.5 w-3.5 transition-transform',
+                            refreshing ? 'duration-[1500ms] rotate-[360deg]' : 'duration-0',
+                        )} />
+                        Actualizar
+                    </Button>
                     </div>
 
                 </div>

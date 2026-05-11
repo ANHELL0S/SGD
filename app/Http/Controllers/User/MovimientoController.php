@@ -206,12 +206,8 @@ class MovimientoController extends Controller
 
         return Inertia::render('user/movimientos/index', [
             'expedientesActivos'  => $buildPaginator($activosCollection, $activosPage, 'activos_page'),
-            'expedientesCerrados' => ($busquedaCerrados !== '' || $request->input('tab') === 'cerrados')
-                ? $buildPaginator($cerradosCollection, $cerradosPage, 'cerrados_page')
-                : Inertia::optional(fn() => $buildPaginator($cerradosCollection, $cerradosPage, 'cerrados_page')),
-            'expedientesVencidos' => ($busquedaVencidos !== '' || $request->input('tab') === 'vencidos')
-                ? $buildPaginator($vencidosCollection, $vencidosPage, 'vencidos_page')
-                : Inertia::optional(fn() => $buildPaginator($vencidosCollection, $vencidosPage, 'vencidos_page')),
+            'expedientesCerrados' => $buildPaginator($cerradosCollection, $cerradosPage, 'cerrados_page'),
+            'expedientesVencidos' => $buildPaginator($vencidosCollection, $vencidosPage, 'vencidos_page'),
             'filters'  => [
                 'busqueda_activos'  => $busquedaActivos,
                 'busqueda_cerrados' => $busquedaCerrados,

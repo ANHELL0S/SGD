@@ -73,6 +73,14 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
         archivo: null,
     });
 
+    // El botón solo se activa si TODOS los campos requeridos están llenos (excepto número de oficio)
+    const isFormValid =
+        Boolean(data.asunto?.trim()) &&
+        Boolean(data.fecha_oficio?.trim()) &&
+        Boolean(data.remitente_id) &&
+        Boolean(data.tipo) &&
+        Boolean(data.palabra_clave?.trim());
+
     const pdfPreviewUrl = useMemo(() => {
         if (data.archivo) return URL.createObjectURL(data.archivo);
         return `/storage/${documento.archivo}`;
@@ -164,6 +172,7 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
                                             value={data.numero_oficio}
                                             onChange={(e) => setData('numero_oficio', e.target.value)}
                                             className="h-8 text-xs"
+                                            placeholder="OF-2026-001"
                                         />
                                     </FormField>
                                     <FormField label="Fecha de oficio" required icon={CalendarDays} error={errors.fecha_oficio}>
@@ -253,7 +262,7 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
                         <div className="flex justify-end">
                             <Button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || !isFormValid}
                                 className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all active:scale-[0.98] text-xs"
                             >
                                 {processing ? 'Guardando...' : 'Guardar cambios'}
