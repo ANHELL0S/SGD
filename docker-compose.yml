@@ -35,7 +35,7 @@ services:
     container_name: oficios_app
     restart: unless-stopped
     env_file:
-      - .env.docker
+      - .env
     volumes:
       - public_asset_SGD:/var/www/html/public
       - app_storage_SGD:/var/www/html/storage/app/public
@@ -79,7 +79,7 @@ services:
     restart: unless-stopped
     entrypoint: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
     env_file:
-      - .env.docker
+      - .env
     ports:
       - "8080:8080"
     networks:
@@ -105,7 +105,7 @@ services:
     restart: unless-stopped
     entrypoint: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     env_file:
-      - .env.docker
+      - .env
     networks:
       - oficios_net
     depends_on:
