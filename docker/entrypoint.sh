@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+# Esperar a que PostgreSQL acepte conexiones
+echo "[entrypoint] Esperando a PostgreSQL..."
+until php -r "new PDO('pgsql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}');" 2>/dev/null; do
+    echo "[entrypoint] PostgreSQL no disponible, reintentando en 2s..."
+    sleep 2
+done
+echo "[entrypoint] PostgreSQL listo."
+
 # Sincronizar assets compilados al volumen compartido con Nginx
 echo "[entrypoint] Copiando assets públicos..."
 cp -rf /var/www/html/public-dist/. /var/www/html/public/
