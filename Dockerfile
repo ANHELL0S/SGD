@@ -15,6 +15,10 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interactio
 
 COPY . .
 
+# .env mínimo para que artisan arranque durante el build (evita errores de parsing
+# cuando el orquestador inyecta APP_NAME con espacios sin comillas)
+RUN printf 'APP_NAME=build\nAPP_ENV=production\nAPP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\nDB_CONNECTION=sqlite\n' > .env
+
 # Generar los archivos de rutas/acciones para el frontend
 RUN php artisan wayfinder:generate --with-form
 
