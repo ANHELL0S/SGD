@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+# Regenerar .env con comillas correctas desde las variables del contenedor.
+# Dokploy puede generar el .env del build context sin comillas para valores
+# con espacios (ej: APP_NAME=Sistema de Gestion), lo que rompe phpdotenv.
+# docker-compose env_file ya parseo correctamente las variables de entorno,
+# asi que las tomamos de ahi y las escribimos bien entrecomilladas.
+env | grep -E '^(APP_|DB_|SESSION_|BROADCAST_|QUEUE_|CACHE_|REVERB_|MAIL_|VITE_|FILESYSTEM_|LOG_|BCRYPT_|TESSERACT_|OCR_|PUSHER_)' | \
+    awk -F'=' '{key=$1; val=substr($0, length($1)+2); printf "%s=\"%s\"\n", key, val}' \
+    > /var/www/html/.env
+
 # Esperar a que PostgreSQL acepte conexiones
 echo "[entrypoint] Esperando a PostgreSQL..."
 until php -r "new PDO('pgsql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}');" 2>/dev/null; do
