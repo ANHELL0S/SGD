@@ -1,10 +1,11 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Search, RotateCcw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import {
     deletedIndex as deletedDocumentosIndex,
     restore as restoreDocumento,
 } from '@/actions/App/Http/Controllers/User/DocumentoController';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,6 +42,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
     Table,
     TableBody,
@@ -50,9 +52,6 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
-import { Separator } from '@/components/ui/separator';
-import { Search } from 'lucide-react';
-import { RotateCcw, Filter, Calendar } from 'lucide-react';
 
 type Remitente = {
     id_remitente: number;
@@ -141,6 +140,11 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
     const { flash } = usePage().props as {
         flash?: { success?: string | null };
     };
+
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+    }, [flash?.success]);
+
     const [documentoToRestore, setDocumentoToRestore] =
         useState<DocumentoEliminado | null>(null);
     const { data, setData } = useForm<FilterState>({
@@ -269,14 +273,6 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
                             </div>
                         </div>
 
-                        {flash?.success && (
-                            <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
-                                <AlertTitle>Operacion completada</AlertTitle>
-                                <AlertDescription>
-                                    {flash.success}
-                                </AlertDescription>
-                            </Alert>
-                        )}
                     </CardHeader>
 
                     <CardContent>

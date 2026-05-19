@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreRemitenteRequest;
 use App\Models\Remitente;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -67,6 +68,19 @@ class RemitenteController extends Controller
                 ->withQueryString()
             ),
         ]);
+    }
+
+    /**
+     * Crea un remitente desde un formulario embebido y devuelve JSON.
+     */
+    public function quickStore(StoreRemitenteRequest $request): JsonResponse
+    {
+        $remitente = Remitente::create($request->validated());
+
+        return response()->json([
+            'id_remitente' => $remitente->id_remitente,
+            'nombre'       => $remitente->nombre,
+        ], 201);
     }
 
     /**

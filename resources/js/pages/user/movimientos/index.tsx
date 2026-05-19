@@ -18,17 +18,17 @@ import {
     FolderOpen,
     X,
 } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
-import MovimientoController, {
-    responder as responderMovimiento,
-} from '@/actions/App/Http/Controllers/User/MovimientoController';
 import {
     cerrar as cerrarExpediente,
     abrir as abrirExpediente,
 } from '@/actions/App/Http/Controllers/User/ExpedienteController';
+import MovimientoController, {
+    responder as responderMovimiento,
+} from '@/actions/App/Http/Controllers/User/MovimientoController';
 import {
     Accordion,
     AccordionContent,
@@ -37,8 +37,8 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Search } from 'lucide-react';
 import {
     Pagination,
     PaginationContent,
@@ -54,8 +54,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { dashboard } from '@/routes';
 
@@ -269,12 +269,15 @@ const getOficioTitle = (movimiento: MovimientoItem): string => {
 
     if (documento.movimiento_origen_id && documento.movimiento_origen) {
         const docOrigen = documento.movimiento_origen.documento;
+
         if (docOrigen?.asunto && docOrigen.asunto.trim() !== '') {
             return `Respuesta a: ${docOrigen.asunto}`;
         }
+
         if (docOrigen?.numero_oficio) {
             return `Respuesta a oficio ${docOrigen.numero_oficio}`;
         }
+
         return `Respuesta a Mov. #${documento.movimiento_origen_id}`;
     }
 
@@ -289,6 +292,7 @@ const getOficioTitle = (movimiento: MovimientoItem): string => {
         if (padreAsunto && padreAsunto.trim() !== '') {
             return `Respuesta de: ${padreAsunto}`;
         }
+
         return `Respuesta de oficio ${padreNumero ?? `#${padreId}`}`;
     }
 
@@ -355,11 +359,13 @@ const useMovimientosRealTime = (
 // ============================================================================
 
 const getRelativeTime = (fecha: string | null): string => {
-    if (!fecha) return '';
+    if (!fecha) {
+return '';
+}
 
     const now = new Date();
     const then = new Date(fecha);
-    let diff = Math.max(0, now.getTime() - then.getTime());
+    const diff = Math.max(0, now.getTime() - then.getTime());
 
     const segundos = Math.floor(diff / 1000);
     const minutos = Math.floor(diff / 60000) % 60;
@@ -369,26 +375,46 @@ const getRelativeTime = (fecha: string | null): string => {
     const meses = Math.floor(dias / 30);
     const años = Math.floor(dias / 365);
 
-    if (segundos < 60) return 'hace unos segundos';
-    if (años > 0) return `hace ${años} año${años > 1 ? 's' : ''}`;
-    if (meses > 0) return `hace ${meses} mes${meses > 1 ? 'es' : ''}`;
-    if (semanas > 0) return `hace ${semanas} semana${semanas > 1 ? 's' : ''}`;
+    if (segundos < 60) {
+return 'hace unos segundos';
+}
+
+    if (años > 0) {
+return `hace ${años} año${años > 1 ? 's' : ''}`;
+}
+
+    if (meses > 0) {
+return `hace ${meses} mes${meses > 1 ? 'es' : ''}`;
+}
+
+    if (semanas > 0) {
+return `hace ${semanas} semana${semanas > 1 ? 's' : ''}`;
+}
+
     if (dias > 0) {
         if (horas > 0 && minutos > 0) {
             return `hace ${dias} día${dias > 1 ? 's' : ''}, ${horas} hora${horas > 1 ? 's' : ''}, ${minutos} min`;
         }
+
         if (horas > 0) {
             return `hace ${dias} día${dias > 1 ? 's' : ''}, ${horas} hora${horas > 1 ? 's' : ''}`;
         }
+
         return `hace ${dias} día${dias > 1 ? 's' : ''}`;
     }
+
     if (horas > 0) {
         if (minutos > 0) {
             return `hace ${horas} hora${horas > 1 ? 's' : ''}, ${minutos} min`;
         }
+
         return `hace ${horas} hora${horas > 1 ? 's' : ''}`;
     }
-    if (minutos > 0) return `hace ${minutos} min`;
+
+    if (minutos > 0) {
+return `hace ${minutos} min`;
+}
+
     return 'hace un momento';
 };
 
@@ -495,31 +521,69 @@ const MovimientoCard = ({
 
     // Color de la línea lateral basado en días hábiles transcurridos
     const getLineColor = () => {
-        if (expedienteCerrado) return 'bg-[var(--chart-4)]'; // Color para expediente cerrado
-        if (bloqueado) return 'bg-gray-400'; // >10 días
-        if (dias >= 7) return 'bg-[var(--destructive)]'; // Alta: 7-10 días
-        if (dias >= 4) return 'bg-[var(--warning)]'; // Media: 4-6 días
-        if (dias >= 0) return 'bg-[var(--primary)]'; // Baja: 1-3 días
+        if (expedienteCerrado) {
+return 'bg-[var(--chart-4)]';
+} // Color para expediente cerrado
+
+        if (bloqueado) {
+return 'bg-gray-400';
+} // >10 días
+
+        if (dias >= 7) {
+return 'bg-[var(--destructive)]';
+} // Alta: 7-10 días
+
+        if (dias >= 4) {
+return 'bg-[var(--warning)]';
+} // Media: 4-6 días
+
+        if (dias >= 0) {
+return 'bg-[var(--primary)]';
+} // Baja: 1-3 días
+
         return ''; // <1 día: sin color
     };
 
     const lineColor = getLineColor();
 
     const urgencyLabel = (() => {
-        if (expedienteCerrado) return 'Cerrado';
-        if (bloqueado) return 'Bloqueado';
-        if (dias >= 7) return 'Alta';
-        if (dias >= 4) return 'Media';
-        if (dias >= 1) return 'Baja';
+        if (expedienteCerrado) {
+return 'Cerrado';
+}
+
+        if (bloqueado) {
+return 'Bloqueado';
+}
+
+        if (dias >= 7) {
+return 'Alta';
+}
+
+        if (dias >= 4) {
+return 'Media';
+}
+
+        if (dias >= 1) {
+return 'Baja';
+}
+
         return '';
     })();
 
     // Tooltip para la línea lateral
     const tooltipText = (() => {
-        if (expedienteCerrado) return 'Expediente cerrado';
-        if (bloqueado)
-            return `Plazo vencido — ${dias} días hábiles sin respuesta`;
-        if (dias < 1) return getRelativeTime(movimiento.fecha_envio);
+        if (expedienteCerrado) {
+return 'Expediente cerrado';
+}
+
+        if (bloqueado) {
+return `Plazo vencido — ${dias} días hábiles sin respuesta`;
+}
+
+        if (dias < 1) {
+return getRelativeTime(movimiento.fecha_envio);
+}
+
         return `${dias} día(s) hábil(es) sin respuesta · Prioridad ${urgencyLabel}`;
     })();
 
@@ -851,6 +915,7 @@ export default function Index({
     // ── Paginación por tab ────────────────────────────────────────────────────
     const getPag = (pag: PaginatedExpedientes | null) => {
         const links = pag?.links ?? [];
+
         return {
             prev: links[0] ?? null,
             next: links[links.length - 1] ?? null,
@@ -875,7 +940,10 @@ export default function Index({
               : expedientesActivos;
 
     const goToPaginationUrl = (url: string | null): void => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, {
             preserveScroll: true,
             preserveState: true,
@@ -905,11 +973,18 @@ export default function Index({
     };
 
     const handleBusqueda = (value: string): void => {
-        if (activeTab === 'activos') setBusquedaActivos(value);
-        else if (activeTab === 'cerrados') setBusquedaCerrados(value);
-        else setBusquedaVencidos(value);
+        if (activeTab === 'activos') {
+setBusquedaActivos(value);
+} else if (activeTab === 'cerrados') {
+setBusquedaCerrados(value);
+} else {
+setBusquedaVencidos(value);
+}
 
-        if (busquedaTimer.current) clearTimeout(busquedaTimer.current);
+        if (busquedaTimer.current) {
+clearTimeout(busquedaTimer.current);
+}
+
         busquedaTimer.current = setTimeout(() => {
             const ba = activeTab === 'activos' ? value : busquedaActivos;
             const bc = activeTab === 'cerrados' ? value : busquedaCerrados;
@@ -936,7 +1011,10 @@ export default function Index({
     };
 
     const refreshMovimientos = (): void => {
-        if (refreshing) return;
+        if (refreshing) {
+return;
+}
+
         setRefreshing(true);
 
         let finished = false;
@@ -945,6 +1023,7 @@ export default function Index({
         const release = () => {
             if (finished && minTimeReached) {
                 setRefreshing(false);
+
                 if (succeeded) {
                     toast.success('Movimientos actualizados correctamente');
                 }
@@ -980,6 +1059,7 @@ export default function Index({
         setState: React.Dispatch<React.SetStateAction<ExpedienteGroup[]>>,
     ): Promise<void> => {
         setLoadingExpediente(expedienteId);
+
         try {
             const params = new URLSearchParams({
                 grupo: `exp:${expedienteId}`,
@@ -989,7 +1069,11 @@ export default function Index({
             const res = await fetch(
                 `/user/movimientos-cargar-mas?${params.toString()}`,
             );
-            if (!res.ok) throw new Error();
+
+            if (!res.ok) {
+throw new Error();
+}
+
             const data = await res.json();
             setState((prev) =>
                 prev.map((e) =>
@@ -1033,6 +1117,7 @@ export default function Index({
         const prev = openValuesRef.current[tabKey] ?? [];
         const added = newValues.find((v) => !prev.includes(v));
         openValuesRef.current[tabKey] = newValues;
+
         if (added) {
             setTimeout(() => {
                 const item = document.getElementById(`exp-${added}`);
@@ -1091,6 +1176,7 @@ export default function Index({
                                                       isNotificacionActiva,
                                                   ).length
                                                 : 0;
+
                                         return notifCount > 0 ? (
                                             <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[8px] leading-none font-bold text-white">
                                                 {notifCount}

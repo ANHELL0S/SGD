@@ -58,13 +58,13 @@ class UpdateUserRequest extends FormRequest
         $user = $this->route('user');
 
         return [
-            'nombre' => ['required', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
-            'apellido' => ['required', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
+            'nombre' => ['required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u'],
+            'apellido' => ['required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u'],
             'cedula' => ['required', 'string', 'size:10', 'regex:/^[0-9]+$/', Rule::unique(User::class, 'cedula')->ignore($user->getKey(), $user->getKeyName())],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')->ignore($user->getKey(), $user->getKeyName())],
+            'email' => ['required', 'string', 'email', 'max:75', Rule::unique(User::class, 'email')->ignore($user->getKey(), $user->getKeyName())],
             'area_id' => ['nullable', 'integer', Rule::exists('areas', 'id_area')],
             'rol' => ['required', Rule::in(['user', 'admin', 'consultor'])],
-            'password' => ['nullable', 'string', Password::min(8)->letters()->mixedCase()->numbers(), 'regex:/[.@#]/', 'confirmed'],
+            'password' => ['nullable', 'string', 'max:100', Password::min(8)->letters()->mixedCase()->numbers(), 'regex:/[.@#]/', 'confirmed'],
         ];
     }
 

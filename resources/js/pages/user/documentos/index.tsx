@@ -1,25 +1,17 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { format, parse } from 'date-fns';
+import { es } from 'date-fns/locale'; // Opcional: para fechas en español
+import { Search, Zap } from 'lucide-react';
+import { RotateCcw, Filter } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Search, Zap } from 'lucide-react';
-import { RotateCcw, Filter } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import { format, parse } from 'date-fns';
-import { es } from 'date-fns/locale'; // Opcional: para fechas en español
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
-
 import {
     Pagination,
     PaginationContent,
@@ -29,12 +21,20 @@ import {
     PaginationPrevious,
 } from '@/components/ui/pagination';
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+
 import DataTable from './data-table';
 import type { DocumentoListado } from './data-table';
 
@@ -116,7 +116,11 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
 
     const handleOcrBusqueda = (value: string) => {
         setData('texto_ocr', value);
-        if (ocrTimer.current) clearTimeout(ocrTimer.current);
+
+        if (ocrTimer.current) {
+clearTimeout(ocrTimer.current);
+}
+
         ocrTimer.current = setTimeout(() => {
             router.get(
                 DocumentoController.index.url(),

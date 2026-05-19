@@ -60,14 +60,20 @@ type Props = {
 const PROJECT_TIME_ZONE = 'America/Guayaquil';
 
 function formatDate(value: string | null): string {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+
     if (isDateOnly) {
         const [year, month, day] = value.split('-').map(Number);
+
         return new Date(year, month - 1, day).toLocaleDateString('es-ES', {
             timeZone: PROJECT_TIME_ZONE,
         });
     }
+
     return new Date(value).toLocaleDateString('es-ES', {
         timeZone: PROJECT_TIME_ZONE,
     });
@@ -104,7 +110,10 @@ export default function DataTable({
     } = useForm<{ documento?: string }>({});
 
     const confirmDelete = (): void => {
-        if (!documentoToDelete) return;
+        if (!documentoToDelete) {
+return;
+}
+
         destroyDocumento(
             destroyDocumentoAction.url(documentoToDelete.id_documento),
             {
@@ -309,27 +318,26 @@ export default function DataTable({
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-[var(--card-background)]">
-                            {/* Agregado text-center a todos los headers */}
-                            <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
+                            <TableHead className="w-24 text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Fecha
                             </TableHead>
-                            <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
+                            <TableHead className="w-48 text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Subido por
                             </TableHead>
                             <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Referencia
                             </TableHead>
-                            <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
+                            <TableHead className="w-24 text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Tipo
                             </TableHead>
-                            <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
+                            <TableHead className="w-36 text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Remitente
                             </TableHead>
-                            <TableHead className="w-[120px] text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
+                            <TableHead className="w-24 text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                 Acciones
                             </TableHead>
                             {!isAdmin && (
-                                <TableHead className="text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
+                                <TableHead className="w-16 text-center text-[12px] font-semibold tracking-wide text-[var(--secondary-foreground)]/80 uppercase">
                                     Enviar
                                 </TableHead>
                             )}
@@ -347,38 +355,29 @@ export default function DataTable({
                                         {formatDate(documento.fecha_oficio)}
                                     </TableCell>
 
-                                    <TableCell className="min-w-[220px]">
+                                    <TableCell>
                                         {documento.user ? (
-                                            <div className="flex items-center justify-center gap-3">
-                                                <Avatar className="size-8">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-8 shrink-0">
                                                     <AvatarFallback className="bg-[var(--primary 100)] text-[10px] text-[var(--primary)]">
                                                         {getUserInitials(
-                                                            documento.user
-                                                                .nombre,
-                                                            documento.user
-                                                                .apellido,
+                                                            documento.user.nombre,
+                                                            documento.user.apellido,
                                                         )}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div className="text-left">
-                                                    {' '}
-                                                    {/* El texto interno queda mejor alineado a la izquierda del avatar */}
+                                                <div className="min-w-0">
                                                     <p className="truncate text-[12px] font-medium text-foreground">
                                                         {documento.user.nombre}{' '}
-                                                        {
-                                                            documento.user
-                                                                .apellido
-                                                        }
+                                                        {documento.user.apellido}
                                                     </p>
                                                     <p className="truncate text-[12px] text-muted-foreground">
-                                                        {documento.user.area
-                                                            ?.nombre ??
-                                                            'Sin área'}
+                                                        {documento.user.area?.nombre ?? 'Sin área'}
                                                     </p>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-center">-</div>
+                                            <span className="text-muted-foreground">-</span>
                                         )}
                                     </TableCell>
 

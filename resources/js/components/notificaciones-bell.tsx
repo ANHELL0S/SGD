@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Bell, Check, AlertTriangle, AlertOctagon, Lock, BellRing } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -32,15 +32,27 @@ const nivelConfig: Record<Nivel, { label: string; color: string; bg: string; ico
 const formatRelative = (dateStr: string): string => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1)   return 'ahora mismo';
-    if (mins < 60)  return `hace ${mins} min`;
+
+    if (mins < 1)   {
+return 'ahora mismo';
+}
+
+    if (mins < 60)  {
+return `hace ${mins} min`;
+}
+
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24)   return `hace ${hrs}h`;
+
+    if (hrs < 24)   {
+return `hace ${hrs}h`;
+}
+
     return `hace ${Math.floor(hrs / 24)}d`;
 };
 
 const getCsrfToken = (): string => {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
     return match ? decodeURIComponent(match[1]) : '';
 };
 
@@ -55,7 +67,11 @@ export function NotificacionesBell() {
             const res = await fetch('/user/alertas', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
-            if (!res.ok) return;
+
+            if (!res.ok) {
+return;
+}
+
             const data = await res.json();
             setAlertas(data.alertas ?? []);
             setNoLeidas(data.no_leidas ?? 0);
@@ -67,7 +83,12 @@ export function NotificacionesBell() {
     useEffect(() => {
         fetchAlertas();
         intervalRef.current = setInterval(fetchAlertas, 30_000);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+
+        return () => {
+ if (intervalRef.current) {
+clearInterval(intervalRef.current);
+} 
+};
     }, []);
 
     const marcarLeida = async (id: number) => {
@@ -89,7 +110,10 @@ export function NotificacionesBell() {
     };
 
     const handleAlertaClick = async (alerta: Alerta) => {
-        if (!alerta.leido_at) await marcarLeida(alerta.id);
+        if (!alerta.leido_at) {
+await marcarLeida(alerta.id);
+}
+
         setOpen(false);
         const url = (alerta.bloqueado || alerta.ya_respondido)
             ? `/user/movimientos/${alerta.movimiento_id}`
@@ -101,12 +125,15 @@ export function NotificacionesBell() {
         if (alerta.ya_respondido) {
             return 'Ya respondido — ver detalle';
         }
+
         if (alerta.bloqueado) {
             return 'Plazo vencido — ya no se puede responder';
         }
+
         if (alerta.dias_restantes === 0) {
             return 'Último día para responder';
         }
+
         return `Te quedan ${alerta.dias_restantes} día${alerta.dias_restantes !== 1 ? 's' : ''} hábil${alerta.dias_restantes !== 1 ? 'es' : ''} para responder`;
     };
 

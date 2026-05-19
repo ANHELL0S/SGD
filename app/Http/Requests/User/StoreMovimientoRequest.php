@@ -39,7 +39,7 @@ class StoreMovimientoRequest extends FormRequest
                         ->where('habilitado', true)
                         ->where('area_id', $this->integer('a_area_id'))),
             ],
-            'comentario' => ['required', 'string', 'max:2000'],
+            'comentario' => ['required', 'string', 'max:400'],
         ];
     }
 }

@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Separator } from '@/components/ui/separator';
 
 import ConsultorController from '@/actions/App/Http/Controllers/Consultor/ConsultorController';
 import { show as documentoShow } from '@/actions/App/Http/Controllers/User/DocumentoController';
@@ -45,6 +44,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { dashboard } from '@/routes';
 
@@ -135,14 +135,20 @@ const cn = (...classes: (string | boolean | undefined | null)[]): string =>
     classes.filter(Boolean).join(' ');
 
 const formatDate = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     return new Date(value).toLocaleDateString('es-ES', {
         day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Guayaquil',
     });
 };
 
 const formatTime = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     return new Date(value).toLocaleTimeString('es-ES', {
         hour: '2-digit', minute: '2-digit', timeZone: 'America/Guayaquil',
     });
@@ -152,20 +158,38 @@ const getFullName = (nombre: string | null, apellido: string | null): string =>
     [nombre, apellido].filter(Boolean).join(' ') || '-';
 
 const getOficioIdentifier = (doc: MovimientoItem['documento']): string => {
-    if (!doc) return '-';
+    if (!doc) {
+return '-';
+}
+
     return doc.numero_oficio ?? `#${doc.id_documento ?? '-'}`;
 };
 
 const getOficioTitle = (mov: MovimientoItem): string => {
     const doc = mov.documento;
-    if (!doc) return `Movimiento #${mov.id_movimiento}`;
-    if (doc.asunto?.trim()) return doc.asunto;
+
+    if (!doc) {
+return `Movimiento #${mov.id_movimiento}`;
+}
+
+    if (doc.asunto?.trim()) {
+return doc.asunto;
+}
+
     if (doc.movimiento_origen_id && doc.movimiento_origen) {
         const origen = doc.movimiento_origen.documento;
-        if (origen?.asunto?.trim()) return `Respuesta a: ${origen.asunto}`;
-        if (origen?.numero_oficio) return `Respuesta a oficio ${origen.numero_oficio}`;
+
+        if (origen?.asunto?.trim()) {
+return `Respuesta a: ${origen.asunto}`;
+}
+
+        if (origen?.numero_oficio) {
+return `Respuesta a oficio ${origen.numero_oficio}`;
+}
+
         return `Respuesta a Mov. #${doc.movimiento_origen_id}`;
     }
+
     return `Oficio ${getOficioIdentifier(doc)}`;
 };
 
@@ -176,9 +200,14 @@ const getOficioTitle = (mov: MovimientoItem): string => {
 function RecordatorioCooldown({ disponibleAt }: { disponibleAt: string }) {
     const calcularRestante = () => {
         const diff = new Date(disponibleAt).getTime() - Date.now();
-        if (diff <= 0) return null;
+
+        if (diff <= 0) {
+return null;
+}
+
         const h = Math.floor(diff / 3_600_000);
         const m = Math.floor((diff % 3_600_000) / 60_000);
+
         return { h, m };
     };
 
@@ -188,8 +217,12 @@ function RecordatorioCooldown({ disponibleAt }: { disponibleAt: string }) {
         const id = setInterval(() => {
             const r = calcularRestante();
             setRestante(r);
-            if (!r) clearInterval(id);
+
+            if (!r) {
+clearInterval(id);
+}
         }, 60_000);
+
         return () => clearInterval(id);
     }, [disponibleAt]);
 
@@ -237,20 +270,50 @@ function MovimientoCard({
     const vencido = movimiento.vencido;
 
     const lineColor = (() => {
-        if (cerrado) return 'bg-[var(--chart-4)]';
-        if (vencido) return 'bg-[var(--destructive)]';
-        if (dias >= 7) return 'bg-[var(--destructive)]';
-        if (dias >= 4) return 'bg-[var(--warning)]';
-        if (dias >= 0) return 'bg-[var(--primary)]';
+        if (cerrado) {
+return 'bg-[var(--chart-4)]';
+}
+
+        if (vencido) {
+return 'bg-[var(--destructive)]';
+}
+
+        if (dias >= 7) {
+return 'bg-[var(--destructive)]';
+}
+
+        if (dias >= 4) {
+return 'bg-[var(--warning)]';
+}
+
+        if (dias >= 0) {
+return 'bg-[var(--primary)]';
+}
+
         return '';
     })();
 
     const urgencyLabel = (() => {
-        if (cerrado) return 'Cerrado';
-        if (vencido) return 'Bloqueado';
-        if (dias >= 7) return 'Alta';
-        if (dias >= 4) return 'Media';
-        if (dias >= 1) return 'Baja';
+        if (cerrado) {
+return 'Cerrado';
+}
+
+        if (vencido) {
+return 'Bloqueado';
+}
+
+        if (dias >= 7) {
+return 'Alta';
+}
+
+        if (dias >= 4) {
+return 'Media';
+}
+
+        if (dias >= 1) {
+return 'Baja';
+}
+
         return '';
     })();
 
@@ -426,8 +489,13 @@ export default function Index({ expedientes, tab, resumen }: Props) {
     const { flash } = usePage().props as { flash?: { success?: string | null; error?: string | null } };
 
     useEffect(() => {
-        if (flash?.success) toast.success(flash.success);
-        if (flash?.error)   toast.error(flash.error);
+        if (flash?.success) {
+toast.success(flash.success);
+}
+
+        if (flash?.error)   {
+toast.error(flash.error);
+}
     }, [flash?.success, flash?.error]);
 
     const [recordandoId, setRecordandoId] = useState<number | null>(null);
@@ -446,7 +514,10 @@ export default function Index({ expedientes, tab, resumen }: Props) {
     const pageLinks       = paginationLinks.slice(1, -1);
 
     const goToUrl = (url: string | null): void => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, { preserveScroll: true, preserveState: false, replace: true });
     };
 
@@ -652,7 +723,9 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                                         <PaginationItem>
                                             <PaginationPrevious
                                                 href={previousLink?.url ?? '#'}
-                                                onClick={(e) => { e.preventDefault(); goToUrl(previousLink?.url ?? null); }}
+                                                onClick={(e) => {
+ e.preventDefault(); goToUrl(previousLink?.url ?? null); 
+}}
                                                 className={!previousLink?.url ? 'pointer-events-none opacity-40' : ''}
                                             />
                                         </PaginationItem>
@@ -661,7 +734,9 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                                                 <PaginationLink
                                                     href={link.url ?? '#'}
                                                     isActive={link.active}
-                                                    onClick={(e) => { e.preventDefault(); goToUrl(link.url); }}
+                                                    onClick={(e) => {
+ e.preventDefault(); goToUrl(link.url); 
+}}
                                                     className={!link.url ? 'pointer-events-none opacity-40' : ''}
                                                 >
                                                     {link.label
@@ -674,7 +749,9 @@ export default function Index({ expedientes, tab, resumen }: Props) {
                                         <PaginationItem>
                                             <PaginationNext
                                                 href={nextLink?.url ?? '#'}
-                                                onClick={(e) => { e.preventDefault(); goToUrl(nextLink?.url ?? null); }}
+                                                onClick={(e) => {
+ e.preventDefault(); goToUrl(nextLink?.url ?? null); 
+}}
                                                 className={!nextLink?.url ? 'pointer-events-none opacity-40' : ''}
                                             />
                                         </PaginationItem>

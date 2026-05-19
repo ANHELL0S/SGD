@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
     Card,
     CardContent,
@@ -28,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
     Table,
     TableBody,
@@ -84,18 +84,26 @@ type Props = {
 };
 
 function estadoBadgeClass(estado: UserRow['estado'] | 'deshabilitado'): string {
-    if (estado === 'aprobado')
-        return 'inline-flex items-center rounded-full border border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-[12px] font-bold text-chart-4 shadow-sm backdrop-blur-sm';
-    if (estado === 'deshabilitado')
-        return 'rounded-full border-destructive-/30 bg-destructive-/10 font-semibold';
-    if (estado === 'pendiente')
-        return 'rounded-full border-amber-200 bg-amber-100 text-amber-800 font-semibold';
+    if (estado === 'aprobado') {
+return 'inline-flex items-center rounded-full border border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-[12px] font-bold text-chart-4 shadow-sm backdrop-blur-sm';
+}
+
+    if (estado === 'deshabilitado') {
+return 'rounded-full border-destructive-/30 bg-destructive-/10 font-semibold';
+}
+
+    if (estado === 'pendiente') {
+return 'rounded-full border-amber-200 bg-amber-100 text-amber-800 font-semibold';
+}
+
     return 'rounded-full border-rose-200 bg-rose-100 text-rose-800 font-semibold';
 }
 
 function estadoVisible(user: UserRow): UserRow['estado'] | 'deshabilitado' {
-    if (user.estado === 'aprobado' && user.habilitado === false)
-        return 'deshabilitado';
+    if (user.estado === 'aprobado' && user.habilitado === false) {
+return 'deshabilitado';
+}
+
     return user.estado;
 }
 
@@ -198,7 +206,10 @@ export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
     };
 
     const goToPaginationUrl = (url: string | null): void => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, {
             preserveScroll: true,
             preserveState: true,

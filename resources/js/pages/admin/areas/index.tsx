@@ -1,9 +1,3 @@
-import {
-    Carousel,
-    CarouselApi,
-    CarouselContent,
-    CarouselItem,
-} from '@/components/ui/carousel';
 import { Head, router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
@@ -37,6 +31,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+} from '@/components/ui/carousel';
+import type {
+    CarouselApi} from '@/components/ui/carousel';
 import {
     Dialog,
     DialogContent,
@@ -155,7 +156,10 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
     const [deletedLoading, setDeletedLoading] = useState(false);
 
     useEffect(() => {
-        if (!carouselApi) return;
+        if (!carouselApi) {
+return;
+}
+
         setActiveSlide(carouselApi.selectedScrollSnap());
         carouselApi.on('select', () =>
             setActiveSlide(carouselApi.selectedScrollSnap()),
@@ -164,7 +168,10 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
 
     // Carga lazy de eliminadas: solo cuando el usuario navega al slide 1
     useEffect(() => {
-        if (activeSlide !== 1 || deletedLoaded || deletedLoading) return;
+        if (activeSlide !== 1 || deletedLoaded || deletedLoading) {
+return;
+}
+
         setDeletedLoading(true);
         router.reload({
             only: ['areasEliminadas'],
@@ -220,7 +227,11 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
 
     const handleEditSubmit = (e: { preventDefault(): void }) => {
         e.preventDefault();
-        if (!editingArea) return;
+
+        if (!editingArea) {
+return;
+}
+
         patch(update.url(editingArea.id_area), {
             preserveScroll: true,
             onSuccess: () => {
@@ -237,9 +248,15 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
     };
 
     const confirmDelete = () => {
-        if (!areaToDelete) return;
+        if (!areaToDelete) {
+return;
+}
+
         const isDeleted = 'deleted_at' in areaToDelete && !!areaToDelete.deleted_at;
-        if (isDeleted && deleteConfirmation !== areaToDelete.nombre) return;
+
+        if (isDeleted && deleteConfirmation !== areaToDelete.nombre) {
+return;
+}
 
         const deleteUrl = isDeleted
             ? forceDelete.url(areaToDelete.id_area)
@@ -251,6 +268,8 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                 setAreaToDelete(null);
                 setDeleteConfirmation('');
                 resetDelete();
+                setDeletedLoaded(false);
+
                 if (isDeleted) {
                     toast.error('El área fue eliminada permanentemente.');
                 } else {
@@ -262,7 +281,10 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
     };
 
     const goToPaginationUrl = (url: string | null) => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, {
             preserveScroll: true,
             preserveState: true,
@@ -271,7 +293,10 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
     };
 
     const goToDeletedPaginationUrl = (url: string | null) => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, {
             only: ['areasEliminadas'],
             preserveScroll: true,
@@ -363,7 +388,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                     <Input
                                         id="nombre"
                                         autoComplete="off"
-                                        maxLength={100}
+                                        maxLength={50}
                                         placeholder="RECURSOS HUMANOS"
                                         value={data.nombre}
                                         onChange={(e) =>
@@ -829,23 +854,16 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                 {areaToDelete && 'deleted_at' in areaToDelete && areaToDelete.deleted_at ? (
                                     <>
                                         <p>
-                                            El área{' '}
-                                            <strong className="text-foreground">
-                                                {areaToDelete.nombre}
-                                            </strong>{' '}
-                                            será eliminada{' '}
-                                            <strong className="text-destructive">
-                                                permanentemente
-                                            </strong>{' '}
+                                            Esta área será eliminada{' '}
+                                            <strong className="text-destructive">permanentemente</strong>{' '}
                                             y no podrá recuperarse.
+                                        </p>
+                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
+                                            {areaToDelete.nombre}
                                         </p>
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                Escribe{' '}
-                                                <span className="font-mono text-foreground">
-                                                    {areaToDelete.nombre}
-                                                </span>{' '}
-                                                para confirmar
+                                                Escribe el nombre exacto para confirmar
                                             </Label>
                                             <Input
                                                 autoFocus
@@ -860,14 +878,13 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                         </div>
                                     </>
                                 ) : (
-                                    <p>
-                                        ¿Seguro que deseas eliminar el área{' '}
-                                        <strong className="text-foreground">
+                                    <>
+                                        <p>¿Seguro que deseas mover a la papelera el área?</p>
+                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
                                             {areaToDelete?.nombre}
-                                        </strong>
-                                        ? Pasará a la papelera y podrás restaurarla
-                                        después.
-                                    </p>
+                                        </p>
+                                        <p>Podrás restaurarla después desde la papelera.</p>
+                                    </>
                                 )}
                             </div>
                         </AlertDialogDescription>
@@ -920,7 +937,7 @@ export default function Index({ areas, areasEliminadas, filters }: Props) {
                                 id="edit-nombre"
                                 autoFocus
                                 autoComplete="off"
-                                maxLength={100}
+                                maxLength={50}
                                 placeholder="RECURSOS HUMANOS"
                                 value={editData.nombre}
                                 onChange={(e) =>

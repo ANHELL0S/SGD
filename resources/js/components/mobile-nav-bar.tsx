@@ -23,7 +23,9 @@ export function MobileNavBar() {
 
     const role = auth?.user?.rol;
 
-    if (role !== 'user' && role !== 'admin') return null;
+    if (role !== 'user' && role !== 'admin') {
+return null;
+}
 
     const currentPath = page.url?.split('?')[0] ?? '';
 

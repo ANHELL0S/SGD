@@ -43,7 +43,10 @@ type Props = {
 // ============================================================================
 
 const formatDate = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     return new Date(value).toLocaleString('es-ES', {
         day: 'numeric',
         month: 'short',
@@ -55,18 +58,24 @@ const formatDate = (value: string | null): string => {
 };
 
 const estadoConfig = (estado: UserDetail['estado']) => {
-    if (estado === 'aprobado') return {
+    if (estado === 'aprobado') {
+return {
         label: 'Aprobado',
         className: 'border-border bg-card text-primary',
         icon: CheckCircle2,
         iconClass: 'text-primary',
     };
-    if (estado === 'pendiente') return {
+}
+
+    if (estado === 'pendiente') {
+return {
         label: 'Pendiente',
         className: 'border-border bg-muted text-muted-foreground',
         icon: Clock,
         iconClass: 'text-muted-foreground',
     };
+}
+
     return {
         label: 'Rechazado',
         className: 'border-destructive bg-destructive/10 text-destructive',

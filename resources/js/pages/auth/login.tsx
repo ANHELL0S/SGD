@@ -1,10 +1,10 @@
 import { Form, Head, usePage } from '@inertiajs/react';
+import { CheckCircle2, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -25,8 +25,12 @@ export default function Login({ status, canResetPassword }: Props) {
     }, [flash?.retry_after]);
 
     useEffect(() => {
-        if (!countdown || countdown <= 0) return;
+        if (!countdown || countdown <= 0) {
+return;
+}
+
         const timer = setTimeout(() => setCountdown((prev) => (prev ?? 1) - 1), 1000);
+
         return () => clearTimeout(timer);
     }, [countdown]);
 
@@ -35,8 +39,9 @@ export default function Login({ status, canResetPassword }: Props) {
             <Head title="Iniciar sesión" />
 
             {status && (
-                <div className="mb-6 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-center text-sm text-green-700">
-                    {status}
+                <div className="mb-5 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>{status}</span>
                 </div>
             )}
 
@@ -48,8 +53,10 @@ export default function Login({ status, canResetPassword }: Props) {
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Correo electrónico</Label>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="email" className="text-xs font-medium text-foreground">
+                                Correo electrónico
+                            </Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -59,20 +66,23 @@ export default function Login({ status, canResetPassword }: Props) {
                                 tabIndex={1}
                                 autoComplete="email"
                                 placeholder="correo@ejemplo.com"
+                                className="h-11"
                             />
                             <InputError message={errors.email} />
                         </div>
 
-                        <div className="grid gap-2">
+                        <div className="grid gap-1.5">
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Contraseña</Label>
+                                <Label htmlFor="password" className="text-xs font-medium text-foreground">
+                                    Contraseña
+                                </Label>
                                 {canResetPassword && (
                                     <TextLink
                                         href={request()}
-                                        className="text-xs text-muted-foreground hover:text-primary"
+                                        className="text-xs font-medium text-muted-foreground hover:text-primary"
                                         tabIndex={5}
                                     >
-                                        ¿Olvidó su contraseña?
+                                        ¿Olvidaste tu contraseña?
                                     </TextLink>
                                 )}
                             </div>
@@ -83,22 +93,19 @@ export default function Login({ status, canResetPassword }: Props) {
                                 tabIndex={2}
                                 autoComplete="current-password"
                                 placeholder="••••••••"
+                                className="h-11"
                             />
                             <InputError message={errors.password} />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <Checkbox id="remember" name="remember" tabIndex={3} />
-                            <Label htmlFor="remember" className="font-normal cursor-pointer">
-                                Recordarme
-                            </Label>
-                        </div>
-
                         {countdown !== null && countdown > 0 && (
-                            <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-center text-sm text-amber-700">
-                                Puedes intentar de nuevo en{' '}
-                                <span className="font-semibold tabular-nums">{countdown}</span>{' '}
-                                {countdown === 1 ? 'segundo' : 'segundos'}
+                            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                                <Clock className="h-4 w-4 shrink-0" />
+                                <span>
+                                    Puedes intentar de nuevo en{' '}
+                                    <span className="font-semibold tabular-nums">{countdown}</span>{' '}
+                                    {countdown === 1 ? 'segundo' : 'segundos'}
+                                </span>
                             </div>
                         )}
 
@@ -107,10 +114,16 @@ export default function Login({ status, canResetPassword }: Props) {
                             tabIndex={4}
                             disabled={processing || (countdown !== null && countdown > 0)}
                             data-test="login-button"
+                            className="mt-1 h-11 w-full text-sm font-semibold"
                         >
                             {processing && <Spinner />}
                             Iniciar sesión
                         </Button>
+
+                        <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+                            Acceso exclusivo para personal autorizado del{' '}
+                            <span className="font-medium text-foreground">CNE — Delegación Bolívar</span>.
+                        </p>
                     </>
                 )}
             </Form>
@@ -119,7 +132,6 @@ export default function Login({ status, canResetPassword }: Props) {
 }
 
 Login.layout = {
-    title: 'Iniciar sesión',
-    description: 'Ingrese su correo y contraseña para acceder',
+    title: 'Bienvenido de nuevo',
+    description: 'Ingrese sus credenciales para acceder al sistema de gestión de oficios.',
 };
-

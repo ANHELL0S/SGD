@@ -1,19 +1,21 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { FileText, Clock, ArrowRightLeft, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import {
     AreaChart, Area,
     BarChart, Bar,
     PieChart, Pie,
     XAxis, YAxis, CartesianGrid,
 } from 'recharts';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ChartContainer,
     ChartTooltip,
-    ChartTooltipContent,
-    type ChartConfig,
+    ChartTooltipContent
+    
 } from '@/components/ui/chart';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Clock, ArrowRightLeft, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
+import type {ChartConfig} from '@/components/ui/chart';
 // Utilidad local para concatenar clases (igual que en movimientos)
 const cn = (...classes: (string | boolean | undefined | null)[]): string => {
     return classes.filter(Boolean).join(' ');
@@ -84,6 +86,7 @@ const estadoMeta: Record<string, { label: string; className: string }> = {
 
 function EstadoBadge({ value }: { value: string }) {
     const cfg = estadoMeta[value] ?? { label: value, className: 'bg-gray-100 text-gray-700' };
+
     return (
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.className}`}>
             {cfg.label}
@@ -92,7 +95,10 @@ function EstadoBadge({ value }: { value: string }) {
 }
 
 function formatDate(dateStr: string | null): string {
-    if (!dateStr) return '—';
+    if (!dateStr) {
+return '—';
+}
+
     return new Date(dateStr).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -119,13 +125,15 @@ const tipoConfig = {
 
 
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 export default function UserDashboard({ stats, porEstado, porTipo, porMes, periodoSeleccionado, ultimosDocumentos }: Props) {
     const [refreshing, setRefreshing] = useState(false);
 
     const refreshMovimientos = (): void => {
-        if (refreshing) return;
+        if (refreshing) {
+return;
+}
+
         setRefreshing(true);
 
         let finished = false;
@@ -134,6 +142,7 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, perio
         const release = () => {
             if (finished && minTimeReached) {
                 setRefreshing(false);
+
                 if (succeeded) {
                     toast.success('Dashboard actualizado correctamente');
                 }
@@ -388,6 +397,7 @@ export default function UserDashboard({ stats, porEstado, porTipo, porMes, perio
                             <div className="flex flex-col gap-2 border-t pt-3">
                                 {porTipo.map((entry) => {
                                     const pct = totalTipo > 0 ? Math.round((entry.total / totalTipo) * 100) : 0;
+
                                     return (
                                         <div key={entry.tipo} className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">

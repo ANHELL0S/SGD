@@ -1,9 +1,3 @@
-import {
-    Carousel,
-    CarouselApi,
-    CarouselContent,
-    CarouselItem,
-} from '@/components/ui/carousel';
 import { Head, router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
@@ -37,6 +31,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+} from '@/components/ui/carousel';
+import type {
+    CarouselApi} from '@/components/ui/carousel';
 import {
     Dialog,
     DialogContent,
@@ -160,7 +161,10 @@ export default function Index({
     const [deletedLoading, setDeletedLoading] = useState(false);
 
     useEffect(() => {
-        if (!carouselApi) return;
+        if (!carouselApi) {
+return;
+}
+
         setActiveSlide(carouselApi.selectedScrollSnap());
         carouselApi.on('select', () =>
             setActiveSlide(carouselApi.selectedScrollSnap()),
@@ -169,7 +173,10 @@ export default function Index({
 
     // Carga lazy de eliminados: solo cuando el usuario navega al slide 1
     useEffect(() => {
-        if (activeSlide !== 1 || deletedLoaded || deletedLoading) return;
+        if (activeSlide !== 1 || deletedLoaded || deletedLoading) {
+return;
+}
+
         setDeletedLoading(true);
         router.reload({
             only: ['remitentesEliminados'],
@@ -225,7 +232,11 @@ export default function Index({
 
     const handleEditSubmit = (e: { preventDefault(): void }) => {
         e.preventDefault();
-        if (!editingRemitente) return;
+
+        if (!editingRemitente) {
+return;
+}
+
         patch(update.url(editingRemitente.id_remitente), {
             preserveScroll: true,
             onSuccess: () => {
@@ -242,9 +253,15 @@ export default function Index({
     };
 
     const confirmDelete = () => {
-        if (!remitenteToDelete) return;
+        if (!remitenteToDelete) {
+return;
+}
+
         const isDeleted = 'deleted_at' in remitenteToDelete && !!remitenteToDelete.deleted_at;
-        if (isDeleted && deleteConfirmation !== remitenteToDelete.nombre) return;
+
+        if (isDeleted && deleteConfirmation !== remitenteToDelete.nombre) {
+return;
+}
 
         const deleteUrl = isDeleted
             ? forceDelete.url(remitenteToDelete.id_remitente)
@@ -256,6 +273,8 @@ export default function Index({
                 setRemitenteToDelete(null);
                 setDeleteConfirmation('');
                 resetDelete();
+                setDeletedLoaded(false);
+
                 if (isDeleted) {
                     toast.error('El remitente fue eliminado permanentemente.');
                 } else {
@@ -267,7 +286,10 @@ export default function Index({
     };
 
     const goToPaginationUrl = (url: string | null) => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, {
             preserveScroll: true,
             preserveState: true,
@@ -276,7 +298,10 @@ export default function Index({
     };
 
     const goToDeletedPaginationUrl = (url: string | null) => {
-        if (!url) return;
+        if (!url) {
+return;
+}
+
         router.visit(url, {
             only: ['remitentesEliminados'],
             preserveScroll: true,
@@ -369,7 +394,7 @@ export default function Index({
                                     <Input
                                         id="nombre"
                                         autoComplete="off"
-                                        maxLength={100}
+                                        maxLength={50}
                                         placeholder="EJEMPLO: MUNICIPALIDAD 01"
                                         value={data.nombre}
                                         onChange={(e) =>
@@ -841,23 +866,16 @@ export default function Index({
                                 {remitenteToDelete && 'deleted_at' in remitenteToDelete && remitenteToDelete.deleted_at ? (
                                     <>
                                         <p>
-                                            El remitente{' '}
-                                            <strong className="text-foreground">
-                                                {remitenteToDelete.nombre}
-                                            </strong>{' '}
-                                            será eliminado{' '}
-                                            <strong className="text-destructive">
-                                                permanentemente
-                                            </strong>{' '}
+                                            Este remitente será eliminado{' '}
+                                            <strong className="text-destructive">permanentemente</strong>{' '}
                                             y no podrá recuperarse.
+                                        </p>
+                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
+                                            {remitenteToDelete.nombre}
                                         </p>
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                Escribe{' '}
-                                                <span className="font-mono text-foreground">
-                                                    {remitenteToDelete.nombre}
-                                                </span>{' '}
-                                                para confirmar
+                                                Escribe el nombre exacto para confirmar
                                             </Label>
                                             <Input
                                                 autoFocus
@@ -872,14 +890,13 @@ export default function Index({
                                         </div>
                                     </>
                                 ) : (
-                                    <p>
-                                        ¿Seguro que deseas eliminar el remitente{' '}
-                                        <strong className="text-foreground">
+                                    <>
+                                        <p>¿Seguro que deseas mover a la papelera el remitente?</p>
+                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
                                             {remitenteToDelete?.nombre}
-                                        </strong>
-                                        ? Pasará a la papelera y podrás
-                                        restaurarlo después.
-                                    </p>
+                                        </p>
+                                        <p>Podrás restaurarlo después desde la papelera.</p>
+                                    </>
                                 )}
                             </div>
                         </AlertDialogDescription>
@@ -932,7 +949,7 @@ export default function Index({
                                 id="edit-nombre"
                                 autoFocus
                                 autoComplete="off"
-                                maxLength={100}
+                                maxLength={50}
                                 placeholder="EJEMPLO: MUNICIPALIDAD 01"
                                 value={editData.nombre}
                                 onChange={(e) =>

@@ -90,7 +90,10 @@ type Props = {
 const PROJECT_TIME_ZONE = 'America/Guayaquil';
 
 const formatDate = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     return new Date(value).toLocaleDateString('es-ES', {
         day: 'numeric', month: 'long', year: 'numeric',
         timeZone: PROJECT_TIME_ZONE,
@@ -98,7 +101,10 @@ const formatDate = (value: string | null): string => {
 };
 
 const formatDateShort = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     return new Date(value).toLocaleDateString('es-ES', {
         day: 'numeric', month: 'short', year: 'numeric',
         timeZone: PROJECT_TIME_ZONE,
@@ -106,7 +112,10 @@ const formatDateShort = (value: string | null): string => {
 };
 
 const formatTime = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     return new Date(value).toLocaleTimeString('es-ES', {
         hour: '2-digit', minute: '2-digit',
         timeZone: PROJECT_TIME_ZONE,
@@ -209,7 +218,10 @@ export default function Show({ movimiento, documento, movimientos, canEnviar }: 
         : `Documento #${documento?.id_documento ?? movimiento.documento_id}`;
 
     const handleDownload = () => {
-        if (!documento?.archivo) return;
+        if (!documento?.archivo) {
+return;
+}
+
         const link = document.createElement('a');
         link.href = getFileUrl(documento.archivo);
         link.download = documento.archivo.split('/').pop() || 'documento.pdf';
@@ -221,7 +233,10 @@ export default function Show({ movimiento, documento, movimientos, canEnviar }: 
     const handlePrint = () => {
         if (documento?.archivo && isPdfFile(documento.archivo)) {
             const win = window.open(getFileUrl(documento.archivo), '_blank');
-            if (win) win.print();
+
+            if (win) {
+win.print();
+}
         }
     };
 

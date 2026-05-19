@@ -48,8 +48,8 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre' => ['required', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
-            'apellido' => ['required', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
+            'nombre' => ['required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u'],
+            'apellido' => ['required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u'],
             'cedula' => ['required', 'string', 'size:10', 'regex:/^[0-9]+$/', Rule::unique(User::class, 'cedula')],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'area_id' => ['nullable', 'integer', Rule::exists('areas', 'id_area')],

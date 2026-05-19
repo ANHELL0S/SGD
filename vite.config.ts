@@ -20,6 +20,8 @@ export default defineConfig({
         tailwindcss(),
         wayfinder({
             formVariants: true,
+            // En Docker los archivos ya están pre-generados; 'true' es un no-op en shell
+            command: process.env.WAYFINDER_CMD ?? 'php artisan wayfinder:generate',
         }),
     ],
 

@@ -34,7 +34,7 @@ class StoreAreaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre' => ['required', 'string', 'max:100', 'regex:/^[\pL\s]+$/u'],
+            'nombre' => ['required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u'],
         ];
     }
 }

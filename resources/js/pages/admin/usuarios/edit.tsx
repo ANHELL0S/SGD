@@ -1,8 +1,9 @@
-import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, User, Mail, Building2, Lock } from 'lucide-react';
+import React from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +14,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { index, update } from '@/routes/admin/usuarios';
 
 // ============================================================================
@@ -80,10 +80,12 @@ function SectionHeader({
 function Field({
     label,
     error,
+    warning,
     children,
 }: {
     label: string;
     error?: string | null;
+    warning?: string | null;
     children: React.ReactNode;
 }) {
     return (
@@ -93,12 +95,14 @@ function Field({
             </Label>
             {children}
             <div className="min-h-[1.1rem]">
-                {error && (
+                {error ? (
                     <InputError
                         message={error}
                         className="flex items-center gap-1 text-xs"
                     />
-                )}
+                ) : warning ? (
+                    <p className="flex items-center gap-1 text-xs text-amber-500">{warning}</p>
+                ) : null}
             </div>
         </div>
     );
@@ -139,99 +143,155 @@ export default function Edit({ user, areas, roles }: Props) {
     const validarNombre = (valor: string): boolean => {
         if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]*$/.test(valor)) {
             setNombreError('Solo se permiten letras.');
+
             return false;
         }
+
         if (valor.trim().length > 0 && valor.trim().length < 3) {
             setNombreError('Mínimo 3 letras.');
+
             return false;
         }
+
         setNombreError(null);
+
         return true;
     };
 
     const validarApellido = (valor: string): boolean => {
         if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]*$/.test(valor)) {
             setApellidoError('Solo se permiten letras.');
+
             return false;
         }
+
         if (valor.trim().length > 0 && valor.trim().length < 3) {
             setApellidoError('Mínimo 3 letras.');
+
             return false;
         }
+
         setApellidoError(null);
+
         return true;
     };
 
     const validarCedulaEcuador = (cedula: string): boolean => {
-        if (!/^\d{10}$/.test(cedula)) return false;
+        if (!/^\d{10}$/.test(cedula)) {
+return false;
+}
+
         const provincia = parseInt(cedula.substring(0, 2), 10);
-        if (!((provincia >= 1 && provincia <= 24) || provincia === 30))
-            return false;
-        if (parseInt(cedula[2], 10) >= 6) return false;
+
+        if (!((provincia >= 1 && provincia <= 24) || provincia === 30)) {
+return false;
+}
+
+        if (parseInt(cedula[2], 10) >= 6) {
+return false;
+}
+
         const coef = [2, 1, 2, 1, 2, 1, 2, 1, 2];
         let suma = 0;
+
         for (let i = 0; i < 9; i++) {
             let val = parseInt(cedula[i], 10) * coef[i];
-            if (val >= 10) val -= 9;
+
+            if (val >= 10) {
+val -= 9;
+}
+
             suma += val;
         }
+
         let digitoVerificador = Math.ceil(suma / 10) * 10 - suma;
-        if (digitoVerificador === 10) digitoVerificador = 0;
+
+        if (digitoVerificador === 10) {
+digitoVerificador = 0;
+}
+
         return parseInt(cedula[9], 10) === digitoVerificador;
     };
 
     const validarCedula = (valor: string) => {
         if (valor.length === 0) {
             setCedulaError(null);
+
             return;
         }
+
         if (valor.length < 10) {
             setCedulaError('La cédula debe tener 10 dígitos.');
+
             return;
         }
+
         if (!validarCedulaEcuador(valor)) {
             setCedulaError('Cédula no válida.');
+
             return;
         }
+
         setCedulaError(null);
     };
 
     const validarConfirmacion = (confirmacion: string, passwordActual = data.password): boolean => {
-        if (confirmacion.length === 0) { setConfirmPasswordError(null); return true; }
+        if (confirmacion.length === 0) {
+ setConfirmPasswordError(null);
+
+ return true; 
+}
+
         if (confirmacion !== passwordActual) {
             setConfirmPasswordError('Las contraseñas no coinciden.');
+
             return false;
         }
+
         setConfirmPasswordError(null);
+
         return true;
     };
 
     const validarPassword = (valor: string): boolean => {
         if (valor.length === 0) {
             setPasswordError(null);
+
             return true;
         }
+
         if (valor.length < 8) {
             setPasswordError('Mínimo 8 caracteres.');
+
             return false;
         }
+
         if (!/[A-Z]/.test(valor)) {
             setPasswordError('Debe incluir una mayúscula.');
+
             return false;
         }
+
         if (!/[a-z]/.test(valor)) {
             setPasswordError('Debe incluir una minúscula.');
+
             return false;
         }
+
         if (!/\d/.test(valor)) {
             setPasswordError('Debe incluir un número.');
+
             return false;
         }
+
         if (!/[^A-Za-z0-9]/.test(valor)) {
             setPasswordError('Debe incluir un carácter especial.');
+
             return false;
         }
+
         setPasswordError(null);
+
         return true;
     };
 
@@ -255,6 +315,7 @@ export default function Edit({ user, areas, roles }: Props) {
             // No enviar si hay errores
             return;
         }
+
         patch(update.url(user.id_user), {
             preserveScroll: true,
             onSuccess: () => reset('password', 'password_confirmation'),
@@ -314,6 +375,7 @@ export default function Edit({ user, areas, roles }: Props) {
                                     id="nombre"
                                     value={data.nombre}
                                     autoComplete="off"
+                                    maxLength={50}
                                     onChange={(e) => {
                                         const v = e.target.value.replace(
                                             /[^a-zA-ZáéíóúÁÉÍÓÚñÑ ]/g,
@@ -335,6 +397,7 @@ export default function Edit({ user, areas, roles }: Props) {
                                     id="apellido"
                                     value={data.apellido}
                                     autoComplete="off"
+                                    maxLength={50}
                                     onChange={(e) => {
                                         const v = e.target.value.replace(
                                             /[^a-zA-ZáéíóúÁÉÍÓÚñÑ ]/g,
@@ -378,11 +441,9 @@ export default function Edit({ user, areas, roles }: Props) {
                                     id="email"
                                     type="email"
                                     value={data.email}
+                                    maxLength={75}
                                     onChange={(e) =>
-                                        setData(
-                                            'email',
-                                            e.target.value.toLowerCase(),
-                                        )
+                                        setData('email', e.target.value.toLowerCase())
                                     }
                                 />
                             </Field>
@@ -463,10 +524,12 @@ export default function Edit({ user, areas, roles }: Props) {
                                 <PasswordInput
                                     id="password"
                                     value={data.password}
+                                    maxLength={100}
                                     placeholder="••••••••"
                                     onChange={(e) => {
                                         setData('password', e.target.value);
                                         validarPassword(e.target.value);
+
                                         if (data.password_confirmation) {
                                             validarConfirmacion(data.password_confirmation, e.target.value);
                                         }
@@ -483,6 +546,7 @@ export default function Edit({ user, areas, roles }: Props) {
                                 <PasswordInput
                                     id="password_confirmation"
                                     value={data.password_confirmation}
+                                    maxLength={100}
                                     placeholder="••••••••"
                                     onChange={(e) => {
                                         setData('password_confirmation', e.target.value);

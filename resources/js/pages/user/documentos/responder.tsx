@@ -64,12 +64,14 @@ const todayDate = (): string => {
     const d = new Date();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
+
     return `${d.getFullYear()}-${mm}-${dd}`;
 };
 
 const formatDateDisplay = (iso: string): string => {
     const [y, m, d] = iso.split('-');
     const date = new Date(Number(y), Number(m) - 1, Number(d));
+
     return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
@@ -135,7 +137,10 @@ export default function Responder({ movimiento, remitentes }: Props) {
     const isServerProcessing = processing && Boolean(progress) && (progress?.percentage ?? 0) >= 100;
 
     const handleFile = (file: File | null): void => {
-        if (!file) return;
+        if (!file) {
+return;
+}
+
         setData('archivo', file);
     };
 

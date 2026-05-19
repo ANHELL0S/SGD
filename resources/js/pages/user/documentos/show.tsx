@@ -1,5 +1,4 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { toast } from 'sonner';
 import {
     ArrowLeft,
     ArrowRight,
@@ -7,6 +6,7 @@ import {
     CheckCircle,
     Clock,
     FileText,
+    FileX,
     History,
     Reply,
     Send,
@@ -19,6 +19,7 @@ import {
     ScanText,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import {
     marcarRecibido,
@@ -114,8 +115,12 @@ const PROJECT_TIME_ZONE = 'America/Guayaquil';
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const formatDate = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     const date = DATE_REGEX.test(value) ? new Date(`${value}T12:00:00`) : new Date(value);
+
     return date.toLocaleDateString('es-ES', {
         year: 'numeric', month: 'long', day: 'numeric',
         timeZone: PROJECT_TIME_ZONE,
@@ -123,8 +128,12 @@ const formatDate = (value: string | null): string => {
 };
 
 const formatDateShort = (value: string | null): string => {
-    if (!value) return '-';
+    if (!value) {
+return '-';
+}
+
     const date = DATE_REGEX.test(value) ? new Date(`${value}T12:00:00`) : new Date(value);
+
     return date.toLocaleDateString('es-ES', {
         day: 'numeric', month: 'short', year: 'numeric',
         timeZone: PROJECT_TIME_ZONE,
@@ -139,6 +148,7 @@ const formatFullName = (nombre: string, apellido: string | null | undefined): st
 const sortMovimientosByDate = (movimientos: Movimiento[]): Movimiento[] =>
     [...movimientos].sort((a, b) => {
         const diff = new Date(a.fecha_envio).getTime() - new Date(b.fecha_envio).getTime();
+
         return diff !== 0 ? diff : a.id_movimiento - b.id_movimiento;
     });
 
@@ -279,7 +289,11 @@ function SendSheet({
     );
 
     return (
-        <Sheet open={open} onOpenChange={(next) => { if (canSend) onOpenChange(next); }}>
+        <Sheet open={open} onOpenChange={(next) => {
+ if (canSend) {
+onOpenChange(next);
+} 
+}}>
             <SheetTrigger asChild>
                 <Button
                     size="sm"
@@ -302,7 +316,9 @@ function SendSheet({
                             <Label htmlFor="a_area_id">Área destino</Label>
                             <Select
                                 value={formData.a_area_id}
-                                onValueChange={(v) => { onFieldChange('a_area_id', v); onFieldChange('destinatario_user_id', ''); }}
+                                onValueChange={(v) => {
+ onFieldChange('a_area_id', v); onFieldChange('destinatario_user_id', ''); 
+}}
                             >
                                 <SelectTrigger id="a_area_id" className="w-full">
                                     <SelectValue placeholder="Selecciona un área" />
@@ -340,13 +356,19 @@ function SendSheet({
                             {errors.destinatario_user_id && <p className="text-xs text-red-600">{errors.destinatario_user_id}</p>}
                         </div>
                         <div className="space-y-1.5">
-                            <Label htmlFor="comentario">
-                                Comentario / motivo <span className="text-red-500">*</span>
-                            </Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="comentario">
+                                    Comentario / motivo <span className="text-red-500">*</span>
+                                </Label>
+                                <span className="text-xs text-muted-foreground">
+                                    {formData.comentario.length}/400
+                                </span>
+                            </div>
                             <Textarea
                                 id="comentario"
                                 placeholder="Ej: Para revisión, Para firma, etc."
                                 required rows={5}
+                                maxLength={400}
                                 value={formData.comentario}
                                 onChange={(e) => onFieldChange('comentario', e.target.value)}
                                 className="resize-none"
@@ -386,6 +408,14 @@ export default function Show({
     const [isSendSheetOpen, setIsSendSheetOpen] = useState<boolean>(
         canEnviar && queryParams.get('send') === '1'
     );
+    const [pdfStatus, setPdfStatus] = useState<'checking' | 'ok' | 'error'>('checking');
+
+    useEffect(() => {
+        if (!isPdfFile(documento.archivo)) { setPdfStatus('ok'); return; }
+        fetch(getFileUrl(documento.archivo), { method: 'HEAD' })
+            .then((res) => setPdfStatus(res.ok && (res.headers.get('content-type') ?? '').includes('pdf') ? 'ok' : 'error'))
+            .catch(() => setPdfStatus('error'));
+    }, [documento.archivo]);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         id_documento: documento.id_documento,
@@ -397,7 +427,9 @@ export default function Show({
     const { patch, processing: processingRecepcion } = useForm({});
 
     useEffect(() => {
-        if (flash?.success) toast.success(flash.success, { id: 'flash-success' });
+        if (flash?.success) {
+toast.success(flash.success, { id: 'flash-success' });
+}
     }, [flash?.success]);
 
     const allMovimientos = sortMovimientosByDate(movimientos);
@@ -405,7 +437,11 @@ export default function Show({
 
     const handleSubmitMovimiento = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!canEnviar) return;
+
+        if (!canEnviar) {
+return;
+}
+
         post(storeMovimiento.url(), {
             preserveScroll: true,
             preserveState: false,
@@ -519,7 +555,10 @@ export default function Show({
                                         title="Imprimir"
                                         onClick={() => {
                                             const w = window.open(getFileUrl(documento.archivo), '_blank');
-                                            if (w) w.print();
+
+                                            if (w) {
+w.print();
+}
                                         }}
                                     >
                                         <Printer className="h-3.5 w-3.5" />
@@ -529,11 +568,23 @@ export default function Show({
                         </div>
                         <div className="bg-muted/20 h-[calc(100vh-11rem)] min-h-[500px]">
                             {isPdfFile(documento.archivo) ? (
-                                <iframe
-                                    title="Oficio original"
-                                    src={getFileUrl(documento.archivo)}
-                                    className="w-full h-full"
-                                />
+                                pdfStatus === 'checking' ? (
+                                    <div className="flex h-full items-center justify-center">
+                                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                                    </div>
+                                ) : pdfStatus === 'error' ? (
+                                    <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+                                        <FileX className="h-10 w-10 opacity-40" />
+                                        <p className="text-sm font-medium">El archivo no está disponible</p>
+                                        <p className="text-xs opacity-60">El PDF no se encontró en el servidor.</p>
+                                    </div>
+                                ) : (
+                                    <iframe
+                                        title="Oficio original"
+                                        src={getFileUrl(documento.archivo)}
+                                        className="w-full h-full"
+                                    />
+                                )
                             ) : (
                                 <img
                                     src={getFileUrl(documento.archivo)}

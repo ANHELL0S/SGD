@@ -35,8 +35,8 @@ class StoreDocumentoRequest extends FormRequest
             'fecha_oficio' => ['required', 'date'],
             'remitente_id' => ['required', 'integer', Rule::exists('remitentes', 'id_remitente')],
             'tipo' => ['required', Rule::in(['interno', 'externo'])],
-            'palabra_clave' => ['required', 'string', 'max:100'],
-            'archivo' => ['required', 'file', 'mimes:pdf', 'max:4096'],
+            'palabra_clave' => ['required', 'string', 'max:30'],
+            'archivo' => ['required', 'file', 'mimes:pdf', 'max:2048'],
         ];
     }
 }

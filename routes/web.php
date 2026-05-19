@@ -96,6 +96,11 @@ Route::prefix('user')
                 Route::get('expedientes-estadisticas', 'estadisticas')->name('expedientes.estadisticas');
             });
 
+        // Creación rápida de remitente (desde formulario de documento)
+        Route::post('remitentes/quick', [RemitenteController::class, 'quickStore'])
+            ->middleware('check.role:user')
+            ->name('remitentes.quickStore');
+
         // Rutas de Documentos
         Route::controller(DocumentoController::class)->group(function () {
             Route::get('documentos', 'index')->middleware('check.role:user,admin')->name('documentos.index');

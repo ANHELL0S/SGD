@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { UserCheck, FileText, BellDot } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 // Utilidad local para concatenar clases (igual que en movimientos)
 const cn = (...classes: (string | boolean | undefined | null)[]): string => {
@@ -12,15 +13,15 @@ import {
     PieChart, Pie,
     XAxis, YAxis, CartesianGrid,
 } from 'recharts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ChartContainer,
     ChartTooltip,
-    ChartTooltipContent,
-    type ChartConfig,
+    ChartTooltipContent
+    
 } from '@/components/ui/chart';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserCheck, FileText, BellDot, ArrowRight } from 'lucide-react';
+import type {ChartConfig} from '@/components/ui/chart';
 import { dashboard } from '@/routes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,11 +79,7 @@ function cambiarPeriodo(periodo: Periodo) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('es', {
-        day: '2-digit', month: 'short', year: 'numeric',
-    });
-}
+
 
 // ─── Chart configs ────────────────────────────────────────────────────────────
 
@@ -105,11 +102,14 @@ const alertaConfig = {
 
 import { usePage } from '@inertiajs/react';
 
-export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel, usuariosPendientes, periodoSeleccionado }: Props) {
+export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel, periodoSeleccionado }: Props) {
     const [refreshing, setRefreshing] = useState(false);
 
     const refreshDashboard = (): void => {
-        if (refreshing) return;
+        if (refreshing) {
+return;
+}
+
         setRefreshing(true);
 
         let finished = false;
@@ -118,6 +118,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
         const release = () => {
             if (finished && minTimeReached) {
                 setRefreshing(false);
+
                 if (succeeded) {
                     toast.success('Dashboard actualizado correctamente');
                 }
@@ -152,14 +153,6 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
             icon: UserCheck,
             href: '/admin/usuarios',
             alert: false,
-        },
-        {
-            title: 'Pendientes de aprobación',
-            value: stats.pendientesAprobacion,
-            sub: 'usuarios en espera',
-            icon: Users,
-            href: '/admin/usuarios',
-            alert: stats.pendientesAprobacion > 0,
         },
         {
             title: 'Documentos en sistema',
@@ -221,7 +214,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
 
                 {/* ── Stats strip ───────────────────────────────────── */}
                 <Card className="overflow-hidden py-0">
-                    <div className="grid grid-cols-2 divide-x divide-y lg:grid-cols-4 lg:divide-y-0">
+                    <div className="grid grid-cols-2 divide-x divide-y lg:grid-cols-3 lg:divide-y-0">
                         {statItems.map(({ title, value, sub, icon: Icon, href, alert }) => (
                             <Link
                                 key={title}
@@ -306,63 +299,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
                 </div>
 
                 {/* ── Bottom ────────────────────────────────────────── */}
-                <div className="grid gap-5 lg:grid-cols-3 min-w-0">
-
-                    {/* Usuarios pendientes */}
-                    <Card className="lg:col-span-2">
-                        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
-                            <div>
-                                <CardTitle className="text-sm font-medium">Usuarios pendientes</CardTitle>
-                                <CardDescription className="text-xs mt-0.5">
-                                    {usuariosPendientes.length === 0
-                                        ? 'Ninguno en espera'
-                                        : `${usuariosPendientes.length} esperando revisión`}
-                                </CardDescription>
-                            </div>
-                            <Link href="/admin/usuarios" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                                Ver todos <ArrowRight className="h-3 w-3" />
-                            </Link>
-                        </CardHeader>
-
-                        <CardContent className="p-0">
-                            {usuariosPendientes.length === 0 ? (
-                                <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
-                                    <UserCheck className="h-4 w-4 opacity-40" />
-                                    <span className="text-sm">Todo al día</span>
-                                </div>
-                            ) : (
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-y bg-muted/30">
-                                            <th className="px-5 py-2 text-left text-xs font-medium text-muted-foreground">Usuario</th>
-                                            <th className="hidden px-4 py-2 text-left text-xs font-medium text-muted-foreground md:table-cell">Área</th>
-                                            <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Registro</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {usuariosPendientes.map((u) => (
-                                            <tr
-                                                key={u.id_user}
-                                                className="cursor-pointer transition-colors hover:bg-muted/40"
-                                                onClick={() => window.location.href = `/admin/usuarios/${u.id_user}`}
-                                            >
-                                                <td className="px-5 py-3">
-                                                    <p className="font-medium leading-tight">{u.nombre} {u.apellido}</p>
-                                                    <p className="text-[11px] text-muted-foreground">{u.email}</p>
-                                                </td>
-                                                <td className="hidden px-4 py-3 text-xs text-muted-foreground md:table-cell">
-                                                    {u.area?.nombre ?? '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-right text-[11px] text-muted-foreground">
-                                                    {formatDate(u.created_at)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </CardContent>
-                    </Card>
+                <div className="grid gap-5 min-w-0">
 
                     {/* Alertas por nivel */}
                     <Card>
@@ -388,6 +325,7 @@ export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel
                                     <div className="flex flex-col gap-2 border-t pt-3">
                                         {alertasPorNivel.map((entry) => {
                                             const pct = totalAlertas > 0 ? Math.round((entry.total / totalAlertas) * 100) : 0;
+
                                             return (
                                                 <div key={entry.nivel} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">

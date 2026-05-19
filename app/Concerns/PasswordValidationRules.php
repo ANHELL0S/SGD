@@ -17,6 +17,7 @@ trait PasswordValidationRules
         return [
             'required',
             'string',
+            'max:100',
             Password::min(8)->letters()->mixedCase()->numbers(),
             'regex:/[.@#]/',
             'confirmed',

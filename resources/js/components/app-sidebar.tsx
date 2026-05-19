@@ -5,10 +5,10 @@ import { index as adminAreasIndex } from '@/actions/App/Http/Controllers/Admin/A
 import { index as adminMonitoreoIndex } from '@/actions/App/Http/Controllers/Admin/MonitoreoController';
 import { index as adminRemitentesIndex } from '@/actions/App/Http/Controllers/Admin/RemitenteController';
 import { index as adminUsersIndex } from '@/actions/App/Http/Controllers/Admin/UserController';
+import { index as consultorExpedientesIndex } from '@/actions/App/Http/Controllers/Consultor/ConsultorController';
 import { index as userDocumentosIndex } from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { deletedIndex as adminDocumentosDeletedIndex } from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { index as userMovimientosIndex } from '@/actions/App/Http/Controllers/User/MovimientoController';
-import { index as consultorExpedientesIndex } from '@/actions/App/Http/Controllers/Consultor/ConsultorController';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -219,7 +219,7 @@ export function AppSidebar() {
                 )}
             </SidebarContent>
 
-            <SidebarFooter className='border-t'>
+            <SidebarFooter className='h-14 justify-center border-t border-sidebar-border'>
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

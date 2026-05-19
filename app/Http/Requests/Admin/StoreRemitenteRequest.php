@@ -35,7 +35,7 @@ class StoreRemitenteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre' => ['required', 'string', 'max:100', 'regex:/^[\pL\pN\s]+$/u'],
+            'nombre' => ['required', 'string', 'max:50', 'regex:/^[\pL\pN\s]+$/u'],
             'email' => ['nullable', 'email', 'max:255'],
             'estado' => ['sometimes', 'boolean'],
         ];
