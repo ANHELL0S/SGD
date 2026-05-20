@@ -26,9 +26,11 @@ cp -rf /var/www/html/public-dist/. /var/www/html/public/
 echo "[entrypoint] Creando storage link..."
 php artisan storage:link --quiet 2>/dev/null || true
 
-# Ejecutar migraciones
+# Ejecutar migraciones y seed inicial (AdminSeeder usa updateOrCreate, es idempotente)
 echo "[entrypoint] Ejecutando migraciones..."
 php artisan migrate --force
+echo "[entrypoint] Ejecutando seeders..."
+php artisan db:seed --force
 
 # Optimizar para producción
 echo "[entrypoint] Optimizando..."
