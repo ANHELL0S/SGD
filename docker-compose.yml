@@ -78,7 +78,7 @@ services:
         VITE_PUSHER_APP_CLUSTER: ${PUSHER_APP_CLUSTER}
     container_name: oficios_reverb
     restart: unless-stopped
-    entrypoint: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
     env_file:
       - .env
     ports:
@@ -104,7 +104,7 @@ services:
         VITE_PUSHER_APP_CLUSTER: ${PUSHER_APP_CLUSTER}
     container_name: oficios_queue
     restart: unless-stopped
-    entrypoint: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
     env_file:
       - .env
     networks:
