@@ -140,7 +140,11 @@ return '-';
     });
 };
 
-const getFileUrl = (archivo: string): string => `/storage/${archivo}`;
+const getFileUrl = (archivo: string, updatedAt?: string): string => {
+    const base = `/storage/${archivo}`;
+    if (!updatedAt) return base;
+    return `${base}?v=${new Date(updatedAt).getTime()}`;
+};
 const isPdfFile = (archivo: string): boolean => archivo.toLowerCase().endsWith('.pdf');
 const formatFullName = (nombre: string, apellido: string | null | undefined): string =>
     `${nombre} ${apellido ?? ''}`.trim();
@@ -412,7 +416,7 @@ export default function Show({
 
     useEffect(() => {
         if (!isPdfFile(documento.archivo)) { setPdfStatus('ok'); return; }
-        fetch(getFileUrl(documento.archivo), { method: 'HEAD' })
+        fetch(getFileUrl(documento.archivo, documento.updated_at), { method: 'HEAD' })
             .then((res) => setPdfStatus(res.ok && (res.headers.get('content-type') ?? '').includes('pdf') ? 'ok' : 'error'))
             .catch(() => setPdfStatus('error'));
     }, [documento.archivo]);
@@ -533,7 +537,7 @@ return;
                                 <Button
                                     variant="ghost" size="icon" className="h-8 w-8"
                                     title="Abrir en nueva pestaña"
-                                    onClick={() => window.open(getFileUrl(documento.archivo), '_blank')}
+                                    onClick={() => window.open(getFileUrl(documento.archivo, documento.updated_at), '_blank')}
                                 >
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
@@ -542,7 +546,7 @@ return;
                                     title="Descargar"
                                     onClick={() => {
                                         const a = document.createElement('a');
-                                        a.href = getFileUrl(documento.archivo);
+                                        a.href = getFileUrl(documento.archivo, documento.updated_at);
                                         a.download = documento.archivo.split('/').pop() || 'documento';
                                         a.click();
                                     }}
@@ -554,7 +558,7 @@ return;
                                         variant="ghost" size="icon" className="h-8 w-8"
                                         title="Imprimir"
                                         onClick={() => {
-                                            const w = window.open(getFileUrl(documento.archivo), '_blank');
+                                            const w = window.open(getFileUrl(documento.archivo, documento.updated_at), '_blank');
 
                                             if (w) {
 w.print();
@@ -581,13 +585,13 @@ w.print();
                                 ) : (
                                     <iframe
                                         title="Oficio original"
-                                        src={getFileUrl(documento.archivo)}
+                                        src={getFileUrl(documento.archivo, documento.updated_at)}
                                         className="w-full h-full"
                                     />
                                 )
                             ) : (
                                 <img
-                                    src={getFileUrl(documento.archivo)}
+                                    src={getFileUrl(documento.archivo, documento.updated_at)}
                                     alt="Oficio original"
                                     className="w-full h-full object-contain"
                                 />
