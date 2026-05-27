@@ -7,10 +7,19 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Valida la creación de un nuevo documento (oficio).
+ *
+ * El archivo debe ser PDF de máximo 2 MB. El número de oficio es opcional
+ * pero, si se proporciona, debe ser único en la tabla `documentos` (excluyendo
+ * los eliminados con soft delete).
+ */
 class StoreDocumentoRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Solo usuarios autenticados pueden crear documentos.
+     *
+     * @return bool
      */
     public function authorize(): bool
     {
@@ -18,7 +27,15 @@ class StoreDocumentoRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Reglas de validación del nuevo documento.
+     *
+     * - `numero_oficio`: opcional, único sin trashed, máx. 100 caracteres.
+     * - `asunto`:        obligatorio, máx. 255 caracteres.
+     * - `fecha_oficio`:  obligatoria, formato fecha.
+     * - `remitente_id`:  obligatorio, debe existir en `remitentes`.
+     * - `tipo`:          obligatorio, uno de: interno, externo.
+     * - `palabra_clave`: obligatoria, máx. 30 caracteres.
+     * - `archivo`:       obligatorio, PDF, máx. 2048 KB.
      *
      * @return array<string, array<int, ValidationRule|string>|string>
      */

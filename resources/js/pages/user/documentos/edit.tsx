@@ -51,6 +51,7 @@ type FormValues = {
     palabra_clave: string;
 };
 
+/** Campo de formulario con icono, label, asterisco de requerido y zona de error/advertencia. */
 function FormField({
     label,
     required,
@@ -85,6 +86,15 @@ function FormField({
     );
 }
 
+/**
+ * Formulario de edición de un documento existente.
+ *
+ * Mismo layout que Create (preview PDF + formulario react-hook-form) pero sin
+ * creación rápida de remitente. La preview inicial carga el PDF actual desde storage.
+ * Si el usuario adjunta un PDF nuevo se revoca el Object URL anterior y se muestra el nuevo.
+ * El archivo es opcional: si no se selecciona uno nuevo, el servidor conserva el actual.
+ * Accesible para usuarios con rol `user` propietarios del documento, o `admin`.
+ */
 export default function Edit({ documento, remitentes, tipos }: Props) {
     const [processing, setProcessing] = useState(false);
     const [progress, setProgress] = useState<{ percentage: number } | null>(null);

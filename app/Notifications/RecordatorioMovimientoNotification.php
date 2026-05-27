@@ -11,10 +11,22 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
+/**
+ * Recordatorio enviado al responsable de un movimiento pendiente de respuesta.
+ *
+ * Lo dispara un consultor manualmente desde la vista de movimientos pendientes.
+ * El correo identifica al consultor que envía el recordatorio e incluye el número
+ * de días hábiles transcurridos desde el envío para dar contexto de urgencia.
+ */
 class RecordatorioMovimientoNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * @param Documento  $documento  Documento al que pertenece el movimiento pendiente.
+     * @param Movimiento $movimiento Movimiento cuya respuesta se está solicitando.
+     * @param User       $consultor  Usuario que disparó el recordatorio (aparece en el cuerpo del correo).
+     */
     public function __construct(
         private readonly Documento $documento,
         private readonly Movimiento $movimiento,

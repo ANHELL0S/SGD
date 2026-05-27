@@ -75,6 +75,7 @@ const formatDateDisplay = (iso: string): string => {
     return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
+/** Panel con encabezado, icono y badge opcional para agrupar campos relacionados. */
 function SectionPanel({
     title,
     icon: Icon,
@@ -100,6 +101,7 @@ function SectionPanel({
     );
 }
 
+/** Fila de detalle con icono y label para mostrar datos del movimiento original. */
 function InfoRow({ icon: Icon, label, children }: {
     icon: React.ElementType;
     label: string;
@@ -118,6 +120,16 @@ function InfoRow({ icon: Icon, label, children }: {
     );
 }
 
+/**
+ * Formulario de respuesta a un movimiento recibido.
+ *
+ * Soporta dos modos controlados por `solo_comentario`:
+ * - `false` (defecto): respuesta con nuevo documento PDF — muestra campos de oficio + upload.
+ * - `true`: respuesta solo con texto — oculta los campos de archivo y número de oficio.
+ * Ambos modos hacen POST a `storeRespuesta` (MovimientoController).
+ * Tras el éxito recarga el contador de movimientos pendientes del sidebar.
+ * Accesible solo para el área destinataria del movimiento.
+ */
 export default function Responder({ movimiento, remitentes }: Props) {
     const remitenteNombre =
         remitentes.find((r) => r.id_remitente === movimiento.documento?.remitente_id)?.nombre ?? '-';

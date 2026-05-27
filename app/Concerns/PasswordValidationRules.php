@@ -5,6 +5,13 @@ namespace App\Concerns;
 use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * Centraliza las reglas de validación de contraseñas para mantenerlas consistentes
+ * en formularios de creación de usuario, cambio de contraseña y configuración de perfil.
+ *
+ * Requisitos: mínimo 8 caracteres, letras mayúsculas y minúsculas, al menos un número
+ * y al menos un carácter especial del conjunto `[.@#]`.
+ */
 trait PasswordValidationRules
 {
     /**

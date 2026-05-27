@@ -78,6 +78,7 @@ import {
 // UTILIDADES
 // ============================================================================
 
+/** Elimina caracteres que no sean letra Unicode, número o espacio, y convierte a mayúsculas. */
 function normalizeRemitenteName(value: string): string {
     return value.replace(/[^\p{L}\p{N}\s]/gu, '').toUpperCase();
 }
@@ -144,6 +145,14 @@ type Props = {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Gestión de remitentes externos del sistema.
+ *
+ * Mismo patrón que areas/index: Carousel con slide 0 (activos, CRUD completo) y
+ * slide 1 (papelera con lazy loading). La eliminación permanente requiere escribir
+ * el nombre exacto del remitente.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Index({
     remitentes,
     remitentesEliminados,
@@ -252,6 +261,11 @@ return;
         setEditData({ nombre: remitente.nombre });
     };
 
+    /**
+     * Ejecuta el borrado del remitente seleccionado.
+     * Si ya está en la papelera usa `forceDelete`; de lo contrario hace soft delete.
+     * El force delete exige confirmación exacta del nombre.
+     */
     const confirmDelete = () => {
         if (!remitenteToDelete) {
 return;

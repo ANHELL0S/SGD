@@ -10,12 +10,22 @@ use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Evento de broadcast que notifica en tiempo real cambios sobre documentos y movimientos.
+ *
+ * Implementa `ShouldBroadcastNow` para emitir sincrónicamente (sin pasar por la cola)
+ * y `ShouldRescue` para que un fallo de broadcast no interrumpa la petición HTTP.
+ * Se emite en un canal privado por cada área involucrada en el movimiento, permitiendo
+ * que los clientes de esa área refresquen su UI automáticamente vía Laravel Echo.
+ */
 class DocumentoMovimientoActualizado implements ShouldBroadcastNow, ShouldRescue
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * Create a new event instance.
+     * @param string  $accion   Acción que desencadenó el evento (ej. 'creado', 'actualizado').
+     * @param mixed[] $payload  Datos adicionales que el cliente necesita para refrescar la UI.
+     * @param int[]   $areaIds  IDs de las áreas cuyos canales recibirán el evento.
      */
     public function __construct(
         public readonly string $accion,

@@ -134,6 +134,7 @@ const isPdfFile = (archivo: string): boolean =>
 // SUB-COMPONENTES
 // ============================================================================
 
+/** Fila de detalle con icono y label para mostrar metadatos del movimiento. */
 function InfoRow({ icon: Icon, label, children }: {
     icon: React.ElementType;
     label: string;
@@ -152,6 +153,7 @@ function InfoRow({ icon: Icon, label, children }: {
     );
 }
 
+/** Ítem del historial de traslados: icono verde si fue recibido, ámbar si está pendiente. */
 function TimelineItem({ mov, isLast }: { mov: MovimientoHistorial; isLast: boolean }) {
     const isReceived = !!mov.fecha_recepcion;
 
@@ -211,6 +213,14 @@ function TimelineItem({ mov, isLast }: { mov: MovimientoHistorial; isLast: boole
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Vista detalle de un movimiento individual.
+ *
+ * Tabs: "Documento" (preview PDF + metadatos del movimiento e historial en timeline)
+ * y "OCR" (si el documento tiene contenido extraído). Permite descargar e imprimir el PDF.
+ * Si `canEnviar` es true, muestra un botón para trasladar el documento a otra área.
+ * Accesible para el remitente y el área destinataria del movimiento.
+ */
 export default function Show({ movimiento, documento, movimientos, canEnviar }: Props) {
     const isPending = !movimiento.fecha_recepcion;
     const pageTitle = documento?.numero_oficio

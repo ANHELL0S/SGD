@@ -20,6 +20,17 @@ type Props = {
     twoFactorEnabled?: boolean;
 };
 
+/**
+ * Página de configuración de seguridad: cambio de contraseña y gestión de 2FA.
+ *
+ * La sección de 2FA se muestra solo si `canManageTwoFactor` es `true`. Detecta
+ * cuando el usuario deshabilita 2FA observando el cambio de `twoFactorEnabled`
+ * de `true` a `false` mediante un ref (`prevTwoFactorEnabled`) para limpiar el
+ * estado del hook `useTwoFactorAuth` sin disparar el efecto en la carga inicial.
+ *
+ * Si `hasSetupData` es `true` al visitar la página (sesión interrumpida durante
+ * el setup), muestra "Continue setup" en lugar del botón de activación.
+ */
 export default function Security({
     canManageTwoFactor = false,
     requiresConfirmation = false,

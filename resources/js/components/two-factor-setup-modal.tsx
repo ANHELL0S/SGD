@@ -23,6 +23,7 @@ import { useClipboard } from '@/hooks/use-clipboard';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { confirm } from '@/routes/two-factor';
 
+/** Icono decorativo de cuadrícula con lupa de escaneo para el encabezado del modal 2FA. */
 function GridScanIcon() {
     return (
         <div className="mb-3 rounded-full border border-border bg-card p-0.5 shadow-sm">
@@ -49,6 +50,11 @@ function GridScanIcon() {
     );
 }
 
+/**
+ * Paso 1 del flujo de configuración 2FA: muestra el QR y la clave manual.
+ * Invierte el color del SVG en modo oscuro con un filtro CSS para mantener legibilidad.
+ * El botón de copiar usa `useClipboard` y cambia a icono Check al confirmar la copia.
+ */
 function TwoFactorSetupStep({
     qrCodeSvg,
     manualSetupKey,
@@ -138,6 +144,11 @@ function TwoFactorSetupStep({
     );
 }
 
+/**
+ * Paso 2 del flujo: solicita el código OTP de 6 dígitos para confirmar la vinculación.
+ * Auto-focaliza el primer input al montar con un `setTimeout(0)` para ceder el ciclo
+ * de render antes de llamar a `.focus()`, evitando conflictos con animaciones del Dialog.
+ */
 function TwoFactorVerificationStep({
     onClose,
     onBack,
@@ -240,6 +251,17 @@ type Props = {
     errors: string[];
 };
 
+/**
+ * Modal de configuración de autenticación en dos factores (TOTP).
+ *
+ * Gestiona tres estados:
+ * 1. **Habilitación pendiente**: muestra QR + clave manual (TwoFactorSetupStep).
+ * 2. **Confirmación requerida**: avanza a TwoFactorVerificationStep para validar el código.
+ * 3. **2FA ya habilitado**: muestra el QR informativo con botón de cierre.
+ *
+ * `fetchSetupData` se guarda en un ref para evitar la dependencia circular en el
+ * efecto que carga el QR al abrir el modal por primera vez.
+ */
 export default function TwoFactorSetupModal({
     isOpen,
     onClose,
@@ -295,6 +317,7 @@ export default function TwoFactorSetupModal({
         onClose();
     }, [onClose, resetModalState]);
 
+    /** Avanza al paso de verificación si se requiere confirmación; de lo contrario cierra el modal. */
     const handleModalNextStep = useCallback(() => {
         if (requiresConfirmation) {
             setShowVerificationStep(true);

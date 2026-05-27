@@ -22,6 +22,7 @@ type Alerta = {
     ya_respondido: boolean;
 };
 
+/** Configuración visual (etiqueta, colores Tailwind, icono) por cada nivel de alerta. */
 const nivelConfig: Record<Nivel, { label: string; color: string; bg: string; icon: React.ElementType }> = {
     media:        { label: 'Prioridad media',       color: 'text-orange-600', bg: 'bg-orange-50', icon: AlertTriangle },
     alta:         { label: 'Prioridad alta',         color: 'text-red-600',    bg: 'bg-red-50',    icon: AlertOctagon },
@@ -29,6 +30,7 @@ const nivelConfig: Record<Nivel, { label: string; color: string; bg: string; ico
     recordatorio: { label: 'Recordatorio del consultor', color: 'text-blue-600', bg: 'bg-blue-50', icon: BellRing },
 };
 
+/** Convierte una fecha ISO a texto relativo legible (ej. "hace 3h"). */
 const formatRelative = (dateStr: string): string => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -50,12 +52,24 @@ return `hace ${hrs}h`;
     return `hace ${Math.floor(hrs / 24)}d`;
 };
 
+/** Lee el token CSRF desde la cookie `XSRF-TOKEN` para peticiones PATCH manuales (fuera de Inertia). */
 const getCsrfToken = (): string => {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
 
     return match ? decodeURIComponent(match[1]) : '';
 };
 
+/**
+ * Campana de notificaciones en la barra de navegación.
+ *
+ * Consulta `/user/alertas` al montar y cada 30 segundos para mantener el badge
+ * actualizado sin depender de WebSockets. Al hacer clic en una alerta:
+ * - Si está sin leer: llama PATCH `/user/alertas/{id}/leer` (actualización optimista local).
+ * - Navega a la pantalla de respuesta del movimiento, salvo que esté bloqueado o ya respondido,
+ *   en cuyo caso navega al detalle (solo lectura).
+ *
+ * Las peticiones PATCH usan el token CSRF leído desde la cookie `XSRF-TOKEN`.
+ */
 export function NotificacionesBell() {
     const [alertas, setAlertas]     = useState<Alerta[]>([]);
     const [noLeidas, setNoLeidas]   = useState(0);
@@ -91,6 +105,7 @@ clearInterval(intervalRef.current);
 };
     }, []);
 
+    /** Marca una alerta individual como leída de forma optimista antes de confirmar con el servidor. */
     const marcarLeida = async (id: number) => {
         await fetch(`/user/alertas/${id}/leer`, {
             method: 'PATCH',
@@ -109,6 +124,7 @@ clearInterval(intervalRef.current);
         setNoLeidas(0);
     };
 
+    /** Marca la alerta como leída (si no lo estaba) y navega a responder o ver según el estado. */
     const handleAlertaClick = async (alerta: Alerta) => {
         if (!alerta.leido_at) {
 await marcarLeida(alerta.id);
@@ -121,6 +137,7 @@ await marcarLeida(alerta.id);
         router.visit(url);
     };
 
+    /** Genera el texto de urgencia/estado que aparece bajo el asunto de cada alerta. */
     const getTiempoTexto = (alerta: Alerta): string => {
         if (alerta.ya_respondido) {
             return 'Ya respondido — ver detalle';

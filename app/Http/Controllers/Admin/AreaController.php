@@ -11,9 +11,20 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Gestiona el CRUD de áreas con soporte completo de soft delete.
+ *
+ * Verifica dependencias (usuarios, documentos, movimientos, expedientes)
+ * antes de permitir eliminaciones para mantener la integridad referencial.
+ */
 class AreaController extends Controller
 {
-
+    /**
+     * Restaura un área que fue eliminada con soft delete.
+     *
+     * @param  int $id_area Identificador del área a restaurar.
+     * @return RedirectResponse
+     */
     public function restore(int $id_area): RedirectResponse
     {
         $area = Area::onlyTrashed()->findOrFail($id_area);
@@ -22,6 +33,13 @@ class AreaController extends Controller
         return to_route('admin.areas.index');
     }
 
+    /**
+     * Lista las áreas activas con paginación e indicador de dependencias,
+     * e incluye de forma diferida las áreas eliminadas (soft deleted).
+     *
+     * @param  Request $request Parámetros opcionales: `per_page`, `deleted_per_page`.
+     * @return Response
+     */
     public function index(Request $request): Response
     {
         $perPage = (int) $request->integer('per_page', 5);
@@ -84,6 +102,12 @@ class AreaController extends Controller
         ]);
     }
 
+    /**
+     * Crea una nueva área con los datos validados del formulario.
+     *
+     * @param  StoreAreaRequest $request Datos validados del área.
+     * @return RedirectResponse
+     */
     public function store(StoreAreaRequest $request): RedirectResponse
     {
         Area::create($request->validated());
@@ -91,6 +115,13 @@ class AreaController extends Controller
         return to_route('admin.areas.index');
     }
 
+    /**
+     * Actualiza el nombre u otros atributos de un área existente.
+     *
+     * @param  StoreAreaRequest $request Datos validados del área.
+     * @param  Area             $area    Área a modificar (route model binding).
+     * @return RedirectResponse
+     */
     public function update(StoreAreaRequest $request, Area $area): RedirectResponse
     {
         $area->update($request->validated());
@@ -99,6 +130,15 @@ class AreaController extends Controller
     }
 
 
+    /**
+     * Aplica soft delete al área si no tiene registros asociados.
+     *
+     * Bloquea la eliminación cuando el área posee usuarios, documentos,
+     * expedientes o movimientos (entrada o salida).
+     *
+     * @param  Area $area Área a eliminar (route model binding).
+     * @return RedirectResponse
+     */
     public function destroy(Area $area): RedirectResponse
     {
         $hasRelatedRecords = $area->usuarios()->exists()
@@ -121,7 +161,12 @@ class AreaController extends Controller
     }
 
     /**
-     * Elimina permanentemente un área ya eliminada (soft deleted)
+     * Elimina permanentemente un área que ya fue soft-deleted.
+     *
+     * Bloquea la operación si el área aún tiene expedientes asociados.
+     *
+     * @param  int $id_area Identificador del área en la papelera.
+     * @return RedirectResponse
      */
     public function forceDelete(int $id_area): RedirectResponse
     {

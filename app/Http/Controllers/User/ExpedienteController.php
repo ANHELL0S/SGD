@@ -13,10 +13,20 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Gestiona el ciclo de vida de los expedientes: listado, detalle, apertura/cierre,
+ * cambio de prioridad, exportación y estadísticas.
+ *
+ * Los usuarios solo acceden a expedientes de su área; los administradores tienen acceso global.
+ */
 class ExpedienteController extends Controller
 {
     /**
-     * Lista de expedientes con filtros y paginación
+     * Lista los expedientes con filtros opcionales de estado, prioridad y búsqueda de texto,
+     * junto con estadísticas de conteo por estado.
+     *
+     * @param  Request $request Filtros opcionales: `estado`, `prioridad`, `search`.
+     * @return Response
      */
     public function index(Request $request): Response
     {
@@ -79,7 +89,13 @@ class ExpedienteController extends Controller
     }
 
     /**
-     * Mostrar detalle de un expediente con todos sus movimientos y documentos
+     * Muestra el detalle de un expediente con sus movimientos paginados y relaciones cargadas.
+     *
+     * Solo el admin o usuarios del área creadora pueden acceder.
+     *
+     * @param  Request    $request
+     * @param  Expediente $expediente Expediente a visualizar (route model binding).
+     * @return Response
      */
     public function show(Request $request, Expediente $expediente): Response
 {
@@ -112,7 +128,13 @@ class ExpedienteController extends Controller
 }
 
     /**
-     * Cerrar un expediente (no permite nuevos movimientos)
+     * Cierra un expediente, bloqueando el envío y respuesta de nuevos movimientos.
+     *
+     * Solo el admin o el área creadora pueden cerrarlo. Registra el evento en el log.
+     *
+     * @param  Request    $request
+     * @param  Expediente $expediente Expediente a cerrar (route model binding).
+     * @return RedirectResponse
      */
     public function cerrar(Request $request, Expediente $expediente): RedirectResponse
     {
@@ -147,7 +169,13 @@ class ExpedienteController extends Controller
     }
 
     /**
-     * Abrir un expediente cerrado (permite nuevos movimientos nuevamente)
+     * Reabre un expediente previamente cerrado, permitiendo nuevos movimientos.
+     *
+     * Solo el admin o el área creadora pueden abrirlo. Registra el evento en el log.
+     *
+     * @param  Request    $request
+     * @param  Expediente $expediente Expediente a abrir (route model binding).
+     * @return RedirectResponse
      */
     public function abrir(Request $request, Expediente $expediente): RedirectResponse
     {
@@ -182,7 +210,13 @@ class ExpedienteController extends Controller
     }
 
     /**
-     * Actualizar prioridad del expediente
+     * Actualiza la prioridad del expediente (baja / media / alta).
+     *
+     * Solo el admin o el área creadora pueden modificarla. Registra el cambio en el log.
+     *
+     * @param  Request    $request    Debe contener `prioridad` ∈ {baja, media, alta}.
+     * @param  Expediente $expediente Expediente a modificar (route model binding).
+     * @return RedirectResponse
      */
     public function actualizarPrioridad(Request $request, Expediente $expediente): RedirectResponse
     {
@@ -214,7 +248,14 @@ class ExpedienteController extends Controller
     }
 
     /**
-     * Exportar resumen del expediente (opcional - para reportes)
+     * Exporta el resumen del expediente con todos sus movimientos en formato JSON.
+     *
+     * Pendiente de implementación: podrá adaptarse a PDF o Excel según necesidad.
+     * Solo el admin o el área creadora pueden exportar.
+     *
+     * @param  Request    $request
+     * @param  Expediente $expediente Expediente a exportar (route model binding).
+     * @return \Illuminate\Http\JsonResponse
      */
     public function exportar(Request $request, Expediente $expediente)
     {
@@ -249,7 +290,11 @@ class ExpedienteController extends Controller
     }
 
     /**
-     * Obtener estadísticas generales de expedientes (para dashboard)
+     * Devuelve estadísticas de expedientes del usuario (o globales si es admin):
+     * total, abiertos, cerrados, por prioridad y creados en los últimos 30 días.
+     *
+     * @param  Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function estadisticas(Request $request): \Illuminate\Http\JsonResponse
     {

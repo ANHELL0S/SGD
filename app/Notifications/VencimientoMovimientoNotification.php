@@ -9,10 +9,21 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
+/**
+ * Alerta de vencimiento enviada cuando un movimiento supera los 10 días hábiles sin respuesta.
+ *
+ * La despacha el comando `movimientos:check-alertas` al detectar que el nivel del movimiento
+ * escala a 'bloqueado'. Informa al destinatario del oficio, la fecha de envío y el número
+ * exacto de días hábiles sin atender para motivar una respuesta inmediata.
+ */
 class VencimientoMovimientoNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * @param Movimiento $movimiento  Movimiento en estado bloqueado que originó la alerta.
+     * @param int        $diasHabiles Días hábiles transcurridos desde el envío (> 10).
+     */
     public function __construct(
         private readonly Movimiento $movimiento,
         private readonly int $diasHabiles,

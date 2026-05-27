@@ -8,15 +8,34 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
+/**
+ * Valida la creación de un usuario por el administrador.
+ *
+ * Normaliza nombre, apellido, cédula, email y rol antes de validar.
+ * Las reglas de contraseña se obtienen del concern {@see PasswordValidationRules}.
+ * La unicidad de cédula y email se verifica contra la tabla `users`.
+ */
 class StoreUserRequest extends FormRequest
 {
     use PasswordValidationRules;
 
+    /**
+     * Cualquier usuario autenticado puede realizar esta acción;
+     * la restricción de rol se aplica en el middleware de la ruta.
+     *
+     * @return bool
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Normaliza los campos de texto antes de validar:
+     * nombre y apellido con trim+squish, email a minúsculas, rol a minúsculas.
+     *
+     * @return void
+     */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -43,6 +62,15 @@ class StoreUserRequest extends FormRequest
     }
 
     /**
+     * Reglas de validación del nuevo usuario.
+     *
+     * - `nombre` / `apellido`: solo letras Unicode y espacios, máx. 50.
+     * - `cedula`:  exactamente 10 dígitos, único en `users`.
+     * - `email`:   formato válido, único en `users`.
+     * - `area_id`: opcional, debe existir en `areas`.
+     * - `rol`:     uno de: user, admin, consultor.
+     * - `password`: según {@see PasswordValidationRules::passwordRules()}.
+     *
      * @return array<string, array<int, string>|string>
      */
     public function rules(): array
@@ -59,6 +87,8 @@ class StoreUserRequest extends FormRequest
     }
 
     /**
+     * Mensajes de error personalizados para las reglas más restrictivas.
+     *
      * @return array<string, string>
      */
     public function messages(): array

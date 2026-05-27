@@ -5,16 +5,31 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
+/**
+ * Valida la creación y actualización de un área.
+ *
+ * Normaliza el nombre a mayúsculas, sin espacios extra, antes de validar.
+ * Solo acepta letras y espacios (sin números ni caracteres especiales).
+ */
 class StoreAreaRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Cualquier usuario autenticado puede realizar esta acción;
+     * la restricción de rol se aplica en el middleware de la ruta.
+     *
+     * @return bool
      */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Normaliza `nombre`: elimina espacios extremos, colapsa espacios internos
+     * y convierte a mayúsculas antes de ejecutar la validación.
+     *
+     * @return void
+     */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -27,7 +42,9 @@ class StoreAreaRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Reglas de validación del área.
+     *
+     * - `nombre`: obligatorio, solo letras Unicode y espacios, máximo 50 caracteres.
      *
      * @return array<string, array<int, string>|string>
      */

@@ -59,6 +59,7 @@ type Props = {
 
 const PROJECT_TIME_ZONE = 'America/Guayaquil';
 
+/** Formatea una fecha evitando el desfase de zona horaria para strings de solo fecha (YYYY-MM-DD). */
 function formatDate(value: string | null): string {
     if (!value) {
 return '-';
@@ -79,6 +80,7 @@ return '-';
     });
 }
 
+/** Devuelve las clases Tailwind del badge según el tipo de documento (interno/externo). */
 function getTypeColor(type: string): string {
     switch (type.toLowerCase()) {
         case 'interno':
@@ -94,6 +96,16 @@ function getUserInitials(nombre: string, apellido: string): string {
     return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
 }
 
+/**
+ * Tabla de documentos con diseño responsivo: tarjetas en móvil y tabla clásica en desktop.
+ *
+ * Lógica de permisos por fila:
+ * - **canSendDoc**: solo usuarios no-admin cuya área actual coincide con `area_actual_id`.
+ * - **canDeleteDoc**: admin (cualquier documento) o el propio uploader (`user_id === currentUserId`).
+ *
+ * El botón Enviar redirige a `documentoShow?send=1` para abrir automáticamente el sheet
+ * de envío en la página de detalle.
+ */
 export default function DataTable({
     documentos,
     canDelete,
@@ -132,11 +144,13 @@ return;
         );
     };
 
+    /** El documento está en el área actual del usuario no-admin, por lo que puede enviarlo. */
     const canSendDoc = (documento: DocumentoListado): boolean =>
         !isAdmin &&
         currentUserAreaId !== null &&
         documento.area_actual_id === currentUserAreaId;
 
+    /** Admin puede eliminar cualquier documento; un usuario solo los suyos propios. */
     const canDeleteDoc = (documento: DocumentoListado): boolean =>
         isAdmin || documento.user_id === currentUserId;
 

@@ -256,6 +256,10 @@ const getOficioIdentifier = (
     return documento.numero_oficio ?? `#${documento.id_documento ?? '-'}`;
 };
 
+/**
+ * Resuelve el título de la tarjeta de movimiento.
+ * Cascada: asunto → respuesta a documento origen (asunto o número) → respuesta de padre → id del oficio.
+ */
 const getOficioTitle = (movimiento: MovimientoItem): string => {
     const documento = movimiento.documento;
 
@@ -303,6 +307,7 @@ const isExpedienteCerrado = (movimiento: MovimientoItem): boolean => {
     return movimiento.expediente?.estado === 'cerrado';
 };
 
+/** Devuelve true si el movimiento tiene una acción pendiente de respuesta en un expediente abierto. */
 const isNotificacionActiva = (movimiento: MovimientoItem): boolean => {
     if (isExpedienteCerrado(movimiento)) {
         return false;
@@ -315,6 +320,11 @@ const isNotificacionActiva = (movimiento: MovimientoItem): boolean => {
 // HOOKS PERSONALIZADOS
 // ============================================================================
 
+/**
+ * Suscribe el canal privado `areas.{areaId}.movimientos` de Laravel Echo para
+ * recargar `expedientesActivos` y `resumen` en tiempo real cuando llegue el evento
+ * `.documento.movimiento.actualizado`. Solo activo para usuarios con rol `user`.
+ */
 const useMovimientosRealTime = (
     areaId: number | null | undefined,
     role: string | undefined,
@@ -358,6 +368,7 @@ const useMovimientosRealTime = (
 // FUNCIÓN DE TIEMPO RELATIVO COMPLETA
 // ============================================================================
 
+/** Devuelve tiempo relativo humanizado en español (ej. "hace 3 días, 2 horas"). */
 const getRelativeTime = (fecha: string | null): string => {
     if (!fecha) {
 return '';
@@ -437,6 +448,10 @@ interface MovimientoActionsProps {
     expedienteEstado: 'abierto' | 'cerrado';
 }
 
+/**
+ * Botones de acción de un movimiento: "Ver documento", badge "Plazo vencido" y "Responder".
+ * Omite las acciones de respuesta si el expediente está cerrado o el movimiento está bloqueado.
+ */
 const MovimientoActions = ({
     movimiento,
     processing,
@@ -502,6 +517,11 @@ interface MovimientoCardProps {
     className?: string;
 }
 
+/**
+ * Tarjeta de movimiento con barra lateral de urgencia.
+ * Escala de colores: cerrado → verde · bloqueado → gris · ≥7d → rojo · ≥4d → amarillo · resto → azul.
+ * El punto de notificación naranja aparece cuando `isNotificacionActiva` es true.
+ */
 const MovimientoCard = ({
     movimiento,
     processing,
@@ -835,6 +855,16 @@ return getRelativeTime(movimiento.fecha_envio);
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Vista principal de movimientos del usuario, organizada por expedientes en Accordion.
+ *
+ * Tres tabs: "Activos", "Cerrados" y "Vencidos", cada uno con paginación independiente
+ * y búsqueda por texto. Cada expediente muestra sus movimientos como `MovimientoCard`.
+ * Usa `useMovimientosRealTime` para actualizar el tab activo vía WebSocket (Laravel Echo).
+ * Los admins ven todos los expedientes del sistema; los usuarios solo los de su área.
+ * Los expedientes se pueden cerrar/abrir desde los controles del Accordion header.
+ * Accesible para usuarios con rol `user` y `admin`.
+ */
 export default function Index({
     expedientesActivos,
     expedientesCerrados,

@@ -5,16 +5,31 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
+/**
+ * Valida la creación y actualización de un remitente.
+ *
+ * Normaliza el nombre a mayúsculas y convierte el campo `estado` a booleano
+ * antes de validar, para aceptar valores provenientes de checkboxes HTML.
+ */
 class StoreRemitenteRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Cualquier usuario autenticado puede realizar esta acción;
+     * la restricción de rol se aplica en el middleware de la ruta.
+     *
+     * @return bool
      */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Normaliza `nombre` a mayúsculas sin espacios extra y convierte `estado`
+     * de string ('1', 'true', 'on') a booleano si el campo está presente.
+     *
+     * @return void
+     */
     protected function prepareForValidation(): void
     {
         $payload = [
@@ -32,6 +47,15 @@ class StoreRemitenteRequest extends FormRequest
         $this->merge($payload);
     }
 
+    /**
+     * Reglas de validación del remitente.
+     *
+     * - `nombre`: obligatorio, letras Unicode, números y espacios, máximo 50 caracteres.
+     * - `email`:  opcional, formato email válido, máximo 255 caracteres.
+     * - `estado`: opcional, booleano (normalizado en `prepareForValidation`).
+     *
+     * @return array<string, array<int, string>|string>
+     */
     public function rules(): array
     {
         return [

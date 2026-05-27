@@ -39,6 +39,7 @@ type Props = {
 // SUB-COMPONENTES
 // ============================================================================
 
+/** Encabezado de sección con icono, título y descripción opcional. */
 function SectionHeader({
     icon: Icon,
     title,
@@ -65,6 +66,7 @@ function SectionHeader({
     );
 }
 
+/** Campo de formulario con label, slot de input y zona de error/advertencia. */
 function Field({
     label,
     error,
@@ -104,6 +106,15 @@ function FieldGroup({ children }: { children: React.ReactNode }) {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Formulario de creación de usuarios del sistema.
+ *
+ * Incluye validación client-side antes de enviar al servidor: `validarCedulaEcuador`
+ * aplica el algoritmo de módulo 10 del Registro Civil ecuatoriano (provincia 1–24 o 30,
+ * dígito 3 < 6). La contraseña requiere mínimo 8 caracteres con mayúscula, minúscula,
+ * número y carácter especial.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Create({ areas, roles }: Props) {
     const [nombreError, setNombreError] = React.useState<string | null>(null);
     const [apellidoError, setApellidoError] = React.useState<string | null>(null);
@@ -160,6 +171,7 @@ export default function Create({ areas, roles }: Props) {
         return true;
     };
 
+    /** Valida una cédula ecuatoriana usando el algoritmo de módulo 10 del Registro Civil. */
     const validarCedulaEcuador = (cedula: string): boolean => {
         if (!/^\d{10}$/.test(cedula)) {
 return false;

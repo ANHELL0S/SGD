@@ -7,8 +7,20 @@ use App\Models\AlertaMovimiento;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Gestiona las alertas de movimientos para el usuario autenticado.
+ *
+ * Expone endpoints JSON para listar las últimas alertas con cálculo de días laborales
+ * y para marcar alertas individuales o en bloque como leídas.
+ */
 class AlertaController extends Controller
 {
+    /**
+     * Lista las últimas 30 alertas del usuario con días restantes y estado de respuesta.
+     *
+     * @param  Request $request
+     * @return JsonResponse  `{ alertas: [...], no_leidas: int }`
+     */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -65,6 +77,13 @@ class AlertaController extends Controller
         ]);
     }
 
+    /**
+     * Cuenta los días laborales (lunes a viernes) entre dos fechas, sin incluir el día inicial.
+     *
+     * @param  \Carbon\Carbon          $inicio Fecha de inicio.
+     * @param  \Carbon\CarbonInterface $fin    Fecha de fin.
+     * @return int
+     */
     private function calcularDiasLaborales(\Carbon\Carbon $inicio, \Carbon\CarbonInterface $fin): int
     {
         $dias = 0;
@@ -81,6 +100,15 @@ class AlertaController extends Controller
         return $dias;
     }
 
+    /**
+     * Marca una alerta específica como leída (establece `leido_at`).
+     *
+     * Solo el propietario de la alerta puede marcarla; devuelve 403 en caso contrario.
+     *
+     * @param  Request         $request
+     * @param  AlertaMovimiento $alerta Alerta a marcar (route model binding).
+     * @return JsonResponse  `{ ok: true }`
+     */
     public function marcarLeida(Request $request, AlertaMovimiento $alerta): JsonResponse
     {
         abort_unless($alerta->user_id === $request->user()?->id_user, 403);
@@ -90,6 +118,12 @@ class AlertaController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Marca todas las alertas no leídas del usuario autenticado como leídas en un solo UPDATE.
+     *
+     * @param  Request $request
+     * @return JsonResponse  `{ ok: true }`
+     */
     public function marcarTodasLeidas(Request $request): JsonResponse
     {
         $user = $request->user();

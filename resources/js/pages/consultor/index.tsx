@@ -157,6 +157,7 @@ return '-';
 const getFullName = (nombre: string | null, apellido: string | null): string =>
     [nombre, apellido].filter(Boolean).join(' ') || '-';
 
+/** Devuelve el identificador visual del oficio: número de oficio o `#id` si no tiene número. */
 const getOficioIdentifier = (doc: MovimientoItem['documento']): string => {
     if (!doc) {
 return '-';
@@ -165,6 +166,10 @@ return '-';
     return doc.numero_oficio ?? `#${doc.id_documento ?? '-'}`;
 };
 
+/**
+ * Resuelve el título que se muestra en la tarjeta de movimiento.
+ * Cascada: asunto del documento → asunto/número del documento padre → id del movimiento origen → id del movimiento.
+ */
 const getOficioTitle = (mov: MovimientoItem): string => {
     const doc = mov.documento;
 
@@ -197,6 +202,11 @@ return `Respuesta a oficio ${origen.numero_oficio}`;
 // COOLDOWN DEL BOTÓN RECORDAR
 // ============================================================================
 
+/**
+ * Botón "Recordar" deshabilitado con contador regresivo de horas/minutos.
+ * Se recalcula cada 60 segundos hasta que `disponibleAt` sea pasado, momento
+ * en que el intervalo se limpia y el componente queda estático en "Disponible".
+ */
 function RecordatorioCooldown({ disponibleAt }: { disponibleAt: string }) {
     const calcularRestante = () => {
         const diff = new Date(disponibleAt).getTime() - Date.now();
@@ -254,6 +264,19 @@ clearInterval(id);
 // COMPONENTE CARD DE MOVIMIENTO
 // ============================================================================
 
+/**
+ * Tarjeta de un movimiento dentro de un expediente.
+ *
+ * El color de la barra lateral izquierda y el badge de urgencia siguen esta escala:
+ * - Expediente cerrado → verde (`chart-4`)
+ * - `vencido = true` → rojo (`destructive`) + badge "Bloqueado"
+ * - `dias_transcurridos >= 7` → rojo + badge "Alta"
+ * - `dias_transcurridos >= 4` → amarillo + badge "Media"
+ * - `dias_transcurridos >= 0` → azul (`primary`) + badge "Baja"
+ *
+ * El botón "Recordar" muestra `RecordatorioCooldown` cuando `puede_recordar = false`
+ * pero `recordatorio_disponible_at` aún no ha expirado.
+ */
 function MovimientoCard({
     movimiento,
     expedienteEstado,
@@ -485,6 +508,16 @@ return 'Baja';
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Vista principal del rol `consultor`.
+ *
+ * Muestra todos los expedientes del sistema agrupados en tres tabs (activos / cerrados /
+ * vencidos). Cada expediente se expande con un Accordion que lista sus `MovimientoCard`.
+ * Desde aquí el consultor puede enviar recordatorios a áreas que no han respondido
+ * (sujeto al cooldown de 3 horas definido en `ConsultorController::recordar`).
+ * El botón "Actualizar" recarga parcialmente `expedientes` y `resumen` sin navegar.
+ * Solo accesible para usuarios con rol `consultor`.
+ */
 export default function Index({ expedientes, tab, resumen }: Props) {
     const { flash } = usePage().props as { flash?: { success?: string | null; error?: string | null } };
 
@@ -534,6 +567,7 @@ return;
         });
     };
 
+    /** Envía el recordatorio al área destino y bloquea el botón hasta que el servidor responde. */
     const handleRecordar = (movimientoId: number): void => {
         setRecordandoId(movimientoId);
         router.post(
@@ -546,6 +580,7 @@ return;
         );
     };
 
+    /** Renderiza el Accordion de expedientes o el estado vacío si no hay grupos. */
     const renderExpedientes = (
         grupos: ExpedienteGroup[],
         emptyTitle: string,

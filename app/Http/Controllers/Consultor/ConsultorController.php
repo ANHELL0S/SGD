@@ -17,8 +17,24 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
 
+/**
+ * Controla la vista principal del consultor: listado de expedientes con sus movimientos.
+ *
+ * Permite filtrar por pestaña (activos, cerrados, vencidos), enviar recordatorios
+ * a los responsables de movimientos sin respuesta y calcular días laborales transcurridos.
+ */
 class ConsultorController extends Controller
 {
+    /**
+     * Lista los expedientes paginados según la pestaña seleccionada, con conteos
+     * de movimientos pendientes y vencidos, y un resumen global para el header.
+     *
+     * Un movimiento se considera vencido cuando no tiene respuesta generada
+     * y su `fecha_envio` supera los 14 días calendario (≈ 10 laborales).
+     *
+     * @param  Request $request Parámetros opcionales: `per_page`, `page`, `tab`.
+     * @return Response
+     */
     public function index(Request $request): Response
     {
         $perPage   = min(max((int) $request->input('per_page', 5), 1), 20);
@@ -122,7 +138,16 @@ class ConsultorController extends Controller
     }
 
     /**
-     * Enviar recordatorio al responsable de responder un movimiento.
+     * Envía un recordatorio por notificación al responsable de responder un movimiento.
+     *
+     * Aplica un cooldown de 3 horas entre recordatorios del mismo movimiento.
+     * Si el movimiento tiene destinatario específico notifica solo a ese usuario;
+     * de lo contrario notifica a todos los usuarios activos del área destino.
+     * Crea un registro en {@see AlertaMovimiento} por cada destinatario notificado.
+     *
+     * @param  Request    $request    Petición HTTP con el usuario consultor autenticado.
+     * @param  Movimiento $movimiento Movimiento al que se le envía el recordatorio (route model binding).
+     * @return RedirectResponse
      */
     public function recordar(Request $request, Movimiento $movimiento): RedirectResponse
     {
@@ -211,6 +236,15 @@ class ConsultorController extends Controller
         return back()->with('success', 'Recordatorio enviado correctamente.');
     }
 
+    /**
+     * Transforma un movimiento en el array plano que consume la vista del consultor.
+     *
+     * Calcula si está vencido, los días laborales transcurridos y si puede enviarse
+     * otro recordatorio según el cooldown de 3 horas.
+     *
+     * @param  Movimiento $m Movimiento con sus relaciones ya cargadas.
+     * @return array<string, mixed>
+     */
     private function formatMovimientoData(Movimiento $m): array
     {
         $respuestaEnviada = $m->documentosGenerados->isNotEmpty();
@@ -265,6 +299,13 @@ class ConsultorController extends Controller
         ];
     }
 
+    /**
+     * Cuenta los días laborales (lunes a viernes) entre dos fechas, sin incluir el día inicial.
+     *
+     * @param  Carbon|\DateTimeInterface|string $inicio Fecha de inicio.
+     * @param  Carbon|\DateTimeInterface|string $fin    Fecha de fin.
+     * @return int Número de días laborales transcurridos.
+     */
     private function calcularDiasLaborales($inicio, $fin): int
     {
         // Asegurar que ambos son objetos Carbon normales

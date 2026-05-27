@@ -78,6 +78,7 @@ import {
 // UTILIDADES
 // ============================================================================
 
+/** Elimina cualquier carácter que no sea letra Unicode o espacio y convierte a mayúsculas. */
 function normalizeAreaName(value: string): string {
     return value.replace(/[^\p{L}\s]/gu, '').toUpperCase();
 }
@@ -143,6 +144,17 @@ type Props = {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Gestión de áreas organizacionales del sistema.
+ *
+ * Presenta dos vistas en un Carousel: slide 0 con las áreas activas (CRUD completo)
+ * y slide 1 con la papelera de reciclaje (restaurar / eliminar permanente).
+ * La papelera se carga con lazy loading: la petición al backend se dispara solo
+ * la primera vez que el usuario navega al slide 1.
+ *
+ * La eliminación permanente requiere que el usuario escriba el nombre exacto del área.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Index({ areas, areasEliminadas, filters }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editingArea, setEditingArea] = useState<Area | null>(null);
@@ -247,6 +259,12 @@ return;
         setEditData('nombre', area.nombre);
     };
 
+    /**
+     * Ejecuta el borrado del área seleccionada.
+     * Si el área ya está en la papelera (`deleted_at` presente) llama a `forceDelete`;
+     * de lo contrario hace un soft delete. El force delete exige que `deleteConfirmation`
+     * coincida exactamente con el nombre del área.
+     */
     const confirmDelete = () => {
         if (!areaToDelete) {
 return;

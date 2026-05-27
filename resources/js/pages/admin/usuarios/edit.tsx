@@ -51,6 +51,7 @@ type Props = {
 // SUB-COMPONENTES (mismos que Create)
 // ============================================================================
 
+/** Encabezado de sección con icono, título y descripción opcional. */
 function SectionHeader({
     icon: Icon,
     title,
@@ -77,6 +78,7 @@ function SectionHeader({
     );
 }
 
+/** Campo de formulario con label, slot de input y zona de error/advertencia. */
 function Field({
     label,
     error,
@@ -116,6 +118,15 @@ function FieldGroup({ children }: { children: React.ReactNode }) {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Formulario de edición de un usuario existente.
+ *
+ * Idéntico a Create en estructura y validaciones, con dos diferencias clave:
+ * - La contraseña es opcional (campo vacío = sin cambio en el servidor).
+ * - La cédula permite estar vacía en la validación client-side (el servidor
+ *   aplica `ignore()` sobre el propio usuario para el check de unicidad).
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Edit({ user, areas, roles }: Props) {
     const [nombreError, setNombreError] = React.useState<string | null>(null);
     const [apellidoError, setApellidoError] = React.useState<string | null>(

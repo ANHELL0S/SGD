@@ -10,10 +10,29 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Controla la vista principal del dashboard según el rol del usuario autenticado.
+ *
+ * Redirige a consultores, construye datos para admin y para usuarios normales,
+ * y delega todas las consultas a {@see DashboardQueryService}.
+ */
 class DashboardController extends Controller
 {
+    /**
+     * @param DashboardQueryService $queries Servicio centralizado de consultas del dashboard.
+     */
     public function __construct(private DashboardQueryService $queries) {}
 
+    /**
+     * Muestra el dashboard correspondiente al rol del usuario autenticado.
+     *
+     * - Consultor → redirige a su vista de expedientes.
+     * - Admin     → renderiza `admin/dashboard` con estadísticas globales.
+     * - Usuario   → renderiza `user/dashboard` con estadísticas propias.
+     *
+     * @param  Request                $request Petición HTTP con el parámetro opcional `periodo`.
+     * @return Response|RedirectResponse
+     */
     public function index(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
@@ -36,6 +55,12 @@ class DashboardController extends Controller
 
     // ── Admin ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Recopila todos los datos necesarios para el dashboard de administrador.
+     *
+     * @param  string $periodo Período seleccionado ('semana', 'mes', 'año', 'todos').
+     * @return array<string, mixed> Props que se pasan a la vista Inertia.
+     */
     private function adminDashboardData(string $periodo): array
     {
         [$desde, $hasta] = $periodo === 'todos' ? [null, null] : $this->resolveRango($periodo);
@@ -66,6 +91,13 @@ class DashboardController extends Controller
 
     // ── User ──────────────────────────────────────────────────────────────────
 
+    /**
+     * Recopila todos los datos necesarios para el dashboard de un usuario normal.
+     *
+     * @param  User   $user    Usuario autenticado.
+     * @param  string $periodo Período seleccionado ('semana', 'mes', 'año', 'todos').
+     * @return array<string, mixed> Props que se pasan a la vista Inertia.
+     */
     private function userDashboardData(User $user, string $periodo): array
     {
         $userId = $user->id_user;
@@ -94,6 +126,12 @@ class DashboardController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /**
+     * Devuelve el rango de fechas [desde, hasta] correspondiente al período dado.
+     *
+     * @param  string $periodo Uno de: 'hoy', 'semana', 'año' o cualquier otro valor (→ mes actual).
+     * @return array{0: string, 1: string} Par [fecha_inicio, fecha_fin] en formato Y-m-d.
+     */
     private function resolveRango(string $periodo): array
     {
         return match ($periodo) {
@@ -104,6 +142,18 @@ class DashboardController extends Controller
         };
     }
 
+    /**
+     * Transforma los datos crudos de consulta en la estructura que espera el gráfico de línea/barras.
+     *
+     * Cuando no hay rango definido ('todos') agrupa por mes; para 'año' genera un punto por
+     * cada mes del año; para el resto genera un punto por día dentro del rango.
+     *
+     * @param  array<string, int|string> $raw    Mapa período → total proveniente del servicio.
+     * @param  string                   $periodo Período seleccionado.
+     * @param  string|null              $desde   Fecha de inicio en formato Y-m-d, o null.
+     * @param  string|null              $hasta   Fecha de fin en formato Y-m-d, o null.
+     * @return array<int, array{mes: string, total: int}>
+     */
     private function buildChartData(array $raw, string $periodo, ?string $desde, ?string $hasta): array
     {
         $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -154,6 +204,12 @@ class DashboardController extends Controller
         return $result;
     }
 
+    /**
+     * Convierte el mapa crudo de estados en el formato que espera el gráfico de dona/barras.
+     *
+     * @param  array<string, int> $raw Mapa estado → total (e.g. ['recibido' => 5, 'enviado' => 2]).
+     * @return array<int, array{estado: string, total: int, fill: string}>
+     */
     private function buildPorEstado(array $raw): array
     {
         $meta = [
@@ -172,6 +228,12 @@ class DashboardController extends Controller
         return $result;
     }
 
+    /**
+     * Convierte el mapa crudo de tipos en el formato que espera el gráfico de dona/barras.
+     *
+     * @param  array<string, int> $raw Mapa tipo → total (e.g. ['interno' => 3, 'externo' => 7]).
+     * @return array<int, array{tipo: string, total: int, fill: string}>
+     */
     private function buildPorTipo(array $raw): array
     {
         return [

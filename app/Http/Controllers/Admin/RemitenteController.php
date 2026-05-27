@@ -11,10 +11,20 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Gestiona el CRUD de remitentes con soporte de soft delete.
+ *
+ * Protege la eliminación cuando el remitente tiene documentos asociados
+ * y expone un endpoint de creación rápida en formato JSON para formularios embebidos.
+ */
 class RemitenteController extends Controller
 {
     /**
-     * Muestra la lista de remitentes activos y eliminados.
+     * Lista los remitentes activos con paginación e indicador de dependencias,
+     * e incluye de forma diferida los eliminados (soft deleted).
+     *
+     * @param  Request $request Parámetros opcionales: `per_page`, `deleted_per_page`.
+     * @return Response
      */
     public function index(Request $request): Response
     {
@@ -71,7 +81,12 @@ class RemitenteController extends Controller
     }
 
     /**
-     * Crea un remitente desde un formulario embebido y devuelve JSON.
+     * Crea un remitente desde un formulario embebido y devuelve JSON con el recurso creado.
+     *
+     * Usado por selects dinámicos que necesitan el ID inmediatamente tras la creación.
+     *
+     * @param  StoreRemitenteRequest $request Datos validados del remitente.
+     * @return JsonResponse  HTTP 201 con `id_remitente` y `nombre`.
      */
     public function quickStore(StoreRemitenteRequest $request): JsonResponse
     {
@@ -84,7 +99,10 @@ class RemitenteController extends Controller
     }
 
     /**
-     * Crea un nuevo remitente.
+     * Crea un nuevo remitente y redirige al índice.
+     *
+     * @param  StoreRemitenteRequest $request Datos validados del remitente.
+     * @return RedirectResponse
      */
     public function store(StoreRemitenteRequest $request): RedirectResponse
     {
@@ -95,7 +113,11 @@ class RemitenteController extends Controller
     }
 
     /**
-     * Actualiza un remitente existente.
+     * Actualiza los datos de un remitente existente.
+     *
+     * @param  StoreRemitenteRequest $request   Datos validados del remitente.
+     * @param  Remitente             $remitente Remitente a modificar (route model binding).
+     * @return RedirectResponse
      */
     public function update(StoreRemitenteRequest $request, Remitente $remitente): RedirectResponse
     {
@@ -106,7 +128,10 @@ class RemitenteController extends Controller
     }
 
     /**
-     * Elimina (Soft Delete) un remitente si no tiene dependencias.
+     * Aplica soft delete al remitente si no tiene documentos asociados.
+     *
+     * @param  Remitente $remitente Remitente a eliminar (route model binding).
+     * @return RedirectResponse
      */
     public function destroy(Remitente $remitente): RedirectResponse
     {
@@ -129,7 +154,10 @@ class RemitenteController extends Controller
     }
 
     /**
-     * Restaura un remitente eliminado.
+     * Restaura un remitente que fue eliminado con soft delete.
+     *
+     * @param  int $id_remitente Identificador del remitente en la papelera.
+     * @return RedirectResponse
      */
     public function restore(int $id_remitente): RedirectResponse
     {
@@ -141,7 +169,12 @@ class RemitenteController extends Controller
     }
 
     /**
-     * Elimina permanentemente un remitente (force delete).
+     * Elimina permanentemente un remitente que ya fue soft-deleted.
+     *
+     * Bloquea la operación si el remitente aún tiene documentos asociados.
+     *
+     * @param  int $id_remitente Identificador del remitente en la papelera.
+     * @return RedirectResponse
      */
     public function forceDelete(int $id_remitente): RedirectResponse
     {

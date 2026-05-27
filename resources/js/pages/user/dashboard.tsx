@@ -84,6 +84,7 @@ const estadoMeta: Record<string, { label: string; className: string }> = {
     respondido:  { label: 'Respondido',  className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
 };
 
+/** Badge de estado de documento con color semántico según el valor. */
 function EstadoBadge({ value }: { value: string }) {
     const cfg = estadoMeta[value] ?? { label: value, className: 'bg-gray-100 text-gray-700' };
 
@@ -102,6 +103,7 @@ return '—';
     return new Date(dateStr).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+/** Navega al dashboard recargando todos los props con el periodo seleccionado. */
 function cambiarPeriodo(periodo: Periodo) {
     router.get(dashboard(), { periodo }, { preserveScroll: true, preserveState: false });
 }
@@ -126,9 +128,19 @@ const tipoConfig = {
 
 import { useState } from 'react';
 
+/**
+ * Dashboard personal del usuario.
+ *
+ * Muestra estadísticas propias (documentos, pendientes, movimientos por responder,
+ * respondidos), tres gráficas (actividad por periodo, distribución por estado, torta
+ * por tipo interno/externo) y una tabla con los últimos 5 documentos del usuario.
+ * El selector de periodo y el botón Actualizar funcionan igual que en el AdminDashboard.
+ * Accesible para usuarios con rol `user`.
+ */
 export default function UserDashboard({ stats, porEstado, porTipo, porMes, periodoSeleccionado, ultimosDocumentos }: Props) {
     const [refreshing, setRefreshing] = useState(false);
 
+    /** Recarga parcialmente los props del dashboard con mínimo 1500 ms de animación. */
     const refreshMovimientos = (): void => {
         if (refreshing) {
 return;

@@ -73,6 +73,7 @@ const PERIODO_DESC: Record<Periodo, string> = {
     todos:  'Todo el historial',
 };
 
+/** Navega al dashboard recargando todos los props con el periodo seleccionado. */
 function cambiarPeriodo(periodo: Periodo) {
     router.get(dashboard(), { periodo }, { preserveScroll: true, preserveState: false });
 }
@@ -102,9 +103,22 @@ const alertaConfig = {
 
 import { usePage } from '@inertiajs/react';
 
+/**
+ * Dashboard principal del administrador.
+ *
+ * Muestra estadísticas globales (usuarios, documentos, alertas), tres gráficas
+ * (actividad por periodo, documentos por área, alertas por nivel de prioridad) y
+ * un selector de periodo (semana/mes/año/todos) que recarga los props vía Inertia.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function AdminDashboard({ stats, porMes, porArea, alertasPorNivel, periodoSeleccionado }: Props) {
     const [refreshing, setRefreshing] = useState(false);
 
+    /**
+     * Recarga parcialmente los props del dashboard sin cambiar de página.
+     * Muestra la animación de giro al menos 1500 ms para evitar parpadeos.
+     * Muestra un toast de éxito solo si la petición tuvo éxito.
+     */
     const refreshDashboard = (): void => {
         if (refreshing) {
 return;

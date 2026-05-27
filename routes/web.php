@@ -12,12 +12,24 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\User\MovimientoController;
 use Illuminate\Support\Facades\Route;
 
+// Visitantes no autenticados aterrizan en el login.
 Route::redirect('/', '/login')->name('home');
 
+/*
+ * Dashboard compartido — accesible por todos los roles autenticados, verificados y aprobados.
+ * El controlador devuelve vistas distintas según $user->rol (admin / user / consultor).
+ */
 Route::middleware(['auth', 'verified', 'ensure.approved'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
+/*
+ |--------------------------------------------------------------------------
+ | Rutas de Administración  —  /admin/*
+ |--------------------------------------------------------------------------
+ | Acceso exclusivo para el rol 'admin'. Incluye gestión de usuarios, áreas,
+ | remitentes, papelera de documentos y el panel de monitoreo de actividad.
+ */
 Route::prefix('admin')
     ->name('admin.')
     ->middleware(['auth', 'verified', 'ensure.approved', 'check.role:admin'])
@@ -29,12 +41,14 @@ Route::prefix('admin')
             Route::get('usuarios/{user}', 'show')->name('usuarios.show');
             Route::get('usuarios/{user}/edit', 'edit')->name('usuarios.edit');
             Route::patch('usuarios/{user}', 'update')->name('usuarios.update');
+            // Ciclo de vida del usuario: aprobación, rechazo, habilitación/deshabilitación.
             Route::patch('usuarios/{user}/approve', 'approve')->name('usuarios.approve');
             Route::patch('usuarios/{user}/reject', 'reject')->name('usuarios.reject');
             Route::patch('usuarios/{user}/disable', 'disable')->name('usuarios.disable');
             Route::patch('usuarios/{user}/enable', 'enable')->name('usuarios.enable');
         });
 
+        // destroy → soft delete; forceDelete → eliminación permanente (requiere confirmación en UI).
         Route::controller(AreaController::class)->group(function () {
             Route::get('areas', 'index')->name('areas.index');
             Route::post('areas', 'store')->name('areas.store');
@@ -59,10 +73,19 @@ Route::prefix('admin')
             Route::patch('documentos/{documento}/restore', 'restore')->name('documentos.restore');
         });
 
+        // Panel de logs de auditoría; el polling del sidebar se detiene en esta página.
         Route::get('monitoreo', [MonitoreoController::class, 'index'])->name('monitoreo.index');
         Route::get('monitoreo/{log}', [MonitoreoController::class, 'show'])->name('monitoreo.show');
     });
 
+/*
+ |--------------------------------------------------------------------------
+ | Rutas de Usuario  —  /user/*
+ |--------------------------------------------------------------------------
+ | El middleware base solo exige autenticación + aprobación; el rol específico
+ | se añade por subgrupo porque algunas rutas (ej. documentos.show) admiten
+ | más de un rol (user, admin, consultor).
+ */
 Route::prefix('user')
     ->name('user.')
     ->middleware(['auth', 'verified', 'ensure.approved'])
@@ -79,6 +102,7 @@ Route::prefix('user')
             Route::get('movimientos-cargar-mas', 'cargarMasPorGrupo')->name('movimientos.cargar-mas');
         });
 
+        // store (enviar documento) también está disponible para admin, a diferencia del resto de movimientos.
         Route::post('movimientos', [MovimientoController::class, 'store'])
             ->middleware('check.role:user,admin')
             ->name('movimientos.store');
@@ -105,6 +129,7 @@ Route::prefix('user')
         Route::controller(DocumentoController::class)->group(function () {
             Route::get('documentos', 'index')->middleware('check.role:user,admin')->name('documentos.index');
             Route::get('documentos/create', 'create')->middleware('check.role:user')->name('documentos.create');
+            // show acepta los tres roles: el consultor necesita leer el documento desde la vista de expedientes.
             Route::get('documentos/{documento}', 'show')->middleware('check.role:user,admin,consultor')->name('documentos.show');
             Route::get('documentos/{documento}/edit', 'edit')->middleware('check.role:user,admin')->name('documentos.edit');
             Route::patch('documentos/{documento}', 'update')->middleware('check.role:user,admin')->name('documentos.update');
@@ -124,6 +149,14 @@ Route::prefix('user')
             });
     });
 
+/*
+ |--------------------------------------------------------------------------
+ | Rutas de Consultor  —  /consultor/*
+ |--------------------------------------------------------------------------
+ | Accesible por 'consultor' y también por 'admin' (supervisión).
+ | El consultor supervisa expedientes y puede enviar recordatorios a los
+ | responsables de movimientos pendientes (cooldown de 3 horas en la UI).
+ */
 Route::prefix('consultor')
     ->name('consultor.')
     ->middleware(['auth', 'verified', 'ensure.approved', 'check.role:consultor,admin'])

@@ -8,10 +8,19 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Expone la vista de monitoreo del sistema para el administrador.
+ *
+ * Permite filtrar y paginar los registros de {@see LogSistema} por tipo,
+ * fecha y usuario, y ver el detalle de cada entrada individual.
+ */
 class MonitoreoController extends Controller
 {
     /**
-     * Mostrar listado de logs con filtros
+     * Lista los logs del sistema con filtros opcionales y paginación.
+     *
+     * @param  Request $request Filtros opcionales: `tipo`, `fecha`, `usuario_id`, `per_page`.
+     * @return Response
      */
     public function index(Request $request): Response
     {
@@ -66,7 +75,10 @@ class MonitoreoController extends Controller
     }
 
     /**
-     * Mostrar detalles de un log específico
+     * Muestra el detalle completo de un registro de log, incluyendo el usuario relacionado.
+     *
+     * @param  LogSistema $log Entrada del log (route model binding).
+     * @return Response
      */
     public function show(LogSistema $log): Response
     {

@@ -13,8 +13,20 @@ use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Gestiona el ciclo de vida de los usuarios desde la perspectiva del administrador.
+ *
+ * Cubre creación, edición, aprobación/rechazo de registros pendientes
+ * y habilitación/deshabilitación de cuentas ya aprobadas.
+ */
 class UserController extends Controller
 {
+    /**
+     * Lista los usuarios aprobados y pendientes de aprobación con paginación independiente.
+     *
+     * @param  Request $request Parámetro opcional: `per_page`.
+     * @return Response
+     */
     public function index(Request $request): Response
     {
         $perPage = (int) $request->integer('per_page', 5);
@@ -54,6 +66,11 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Muestra el formulario de creación de un nuevo usuario.
+     *
+     * @return Response
+     */
     public function create(): Response
     {
         return Inertia::render('admin/usuarios/create', [
@@ -62,6 +79,14 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Crea un usuario nuevo con estado aprobado y correo verificado de inmediato.
+     *
+     * La contraseña se hashea antes de persistir. Redirige al perfil del usuario creado.
+     *
+     * @param  StoreUserRequest $request Datos validados del nuevo usuario.
+     * @return RedirectResponse
+     */
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $user = User::create([
@@ -75,6 +100,12 @@ class UserController extends Controller
         return to_route('admin.usuarios.show', $user);
     }
 
+    /**
+     * Muestra el perfil detallado de un usuario, incluyendo su área.
+     *
+     * @param  User $user Usuario a visualizar (route model binding).
+     * @return Response
+     */
     public function show(User $user): Response
     {
         $user->load('area:id_area,nombre');
@@ -84,6 +115,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Muestra el formulario de edición del usuario con las opciones de área y rol.
+     *
+     * @param  User $user Usuario a editar (route model binding).
+     * @return Response
+     */
     public function edit(User $user): Response
     {
         $user->load('area:id_area,nombre');
@@ -95,6 +132,13 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Actualiza los datos del usuario. Si se envía contraseña nueva, la hashea antes de guardar.
+     *
+     * @param  UpdateUserRequest $request Datos validados a actualizar.
+     * @param  User              $user    Usuario a modificar (route model binding).
+     * @return RedirectResponse
+     */
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $validated = $request->validated();
@@ -110,6 +154,12 @@ class UserController extends Controller
         return to_route('admin.usuarios.show', $user);
     }
 
+    /**
+     * Aprueba el registro pendiente de un usuario.
+     *
+     * @param  User $user Usuario pendiente (route model binding).
+     * @return RedirectResponse
+     */
     public function approve(User $user): RedirectResponse
     {
         $user->update([
@@ -119,6 +169,12 @@ class UserController extends Controller
         return to_route('admin.usuarios.index');
     }
 
+    /**
+     * Rechaza el registro pendiente de un usuario.
+     *
+     * @param  User $user Usuario pendiente (route model binding).
+     * @return RedirectResponse
+     */
     public function reject(User $user): RedirectResponse
     {
         $user->update([
@@ -128,6 +184,14 @@ class UserController extends Controller
         return to_route('admin.usuarios.index');
     }
 
+    /**
+     * Deshabilita el acceso de un usuario aprobado sin eliminar su cuenta.
+     *
+     * No tiene efecto si el usuario no está en estado `aprobado`.
+     *
+     * @param  User $user Usuario a deshabilitar (route model binding).
+     * @return RedirectResponse
+     */
     public function disable(User $user): RedirectResponse
     {
         if ($user->estado !== 'aprobado') {
@@ -141,6 +205,14 @@ class UserController extends Controller
         return to_route('admin.usuarios.index');
     }
 
+    /**
+     * Rehabilita el acceso de un usuario aprobado previamente deshabilitado.
+     *
+     * No tiene efecto si el usuario no está en estado `aprobado`.
+     *
+     * @param  User $user Usuario a habilitar (route model binding).
+     * @return RedirectResponse
+     */
     public function enable(User $user): RedirectResponse
     {
         if ($user->estado !== 'aprobado') {
@@ -155,6 +227,8 @@ class UserController extends Controller
     }
 
     /**
+     * Devuelve las opciones de rol disponibles para selects del formulario.
+     *
      * @return array<int, array{value: string, label: string}>
      */
     private function roleOptions(): array
@@ -167,6 +241,8 @@ class UserController extends Controller
     }
 
     /**
+     * Devuelve todas las áreas activas ordenadas alfabéticamente para selects del formulario.
+     *
      * @return array<int, array{id_area: int, nombre: string}>
      */
     private function areaOptions(): array

@@ -140,6 +140,7 @@ return '-';
     });
 };
 
+/** Construye la URL del archivo en storage; añade `?v=timestamp` para romper caché tras edición. */
 const getFileUrl = (archivo: string, updatedAt?: string): string => {
     const base = `/storage/${archivo}`;
     if (!updatedAt) return base;
@@ -149,6 +150,7 @@ const isPdfFile = (archivo: string): boolean => archivo.toLowerCase().endsWith('
 const formatFullName = (nombre: string, apellido: string | null | undefined): string =>
     `${nombre} ${apellido ?? ''}`.trim();
 
+/** Ordena movimientos por `fecha_envio` ascendente; usa `id_movimiento` como desempate. */
 const sortMovimientosByDate = (movimientos: Movimiento[]): Movimiento[] =>
     [...movimientos].sort((a, b) => {
         const diff = new Date(a.fecha_envio).getTime() - new Date(b.fecha_envio).getTime();
@@ -170,6 +172,7 @@ const ESTADO_CONFIG: Record<string, { label: string; className: string }> = {
 // SUB-COMPONENTES
 // ============================================================================
 
+/** Fila de detalle con icono, label y contenido; separada del siguiente ítem con borde. */
 function InfoRow({ icon: Icon, label, children }: {
     icon: React.ElementType;
     label: string;
@@ -188,6 +191,12 @@ function InfoRow({ icon: Icon, label, children }: {
     );
 }
 
+/**
+ * Ítem del historial de movimientos en línea de tiempo.
+ * Muestra icono verde si ya fue recibido, ámbar si está pendiente.
+ * Si `canInteract` es true (el área actual es la destinataria), muestra los botones
+ * "Marcar recibido" y "Responder".
+ */
 function TimelineItem({
     mov, isLast, canInteract, processingRecepcion, onReceive,
 }: {
@@ -273,6 +282,11 @@ function TimelineItem({
     );
 }
 
+/**
+ * Sheet lateral para trasladar el documento a otra área.
+ * Filtra los usuarios destino por el área seleccionada.
+ * Deshabilitado si `canSend` es false (ya hay un movimiento pendiente sin respuesta).
+ */
 function SendSheet({
     canSend, open, onOpenChange, areas, usuariosDestino,
     formData, errors, processing, onFieldChange, onSubmit,
@@ -402,6 +416,18 @@ onOpenChange(next);
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Vista detalle de un documento (oficio).
+ *
+ * Tabs: "Documento" (preview PDF + metadatos + historial de traslados en timeline)
+ * y "OCR" (texto extraído). Desde aquí se puede:
+ * - Abrir el Sheet de traslado (`SendSheet`) para mover el documento a otra área.
+ * - Marcar como recibido un movimiento pendiente.
+ * - Navegar al formulario de respuesta (`Responder`).
+ * `canEnviar` lo calcula el servidor (falso si hay un movimiento pendiente sin recepcionar).
+ * El sheet se abre automáticamente si la URL contiene `?enviar=1`.
+ * Accesible según gates del servidor (`ensureCanVer`/`ensureCanEditar`).
+ */
 export default function Show({
     documento, areas, usuariosDestino, movimientos, canEnviar, userAreaId, userId,
 }: Props) {

@@ -23,10 +23,29 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
 
+/**
+ * Gestiona el CRUD completo de oficios (documentos), búsqueda full-text sobre contenido OCR,
+ * carga de archivos con renombrado por ID y despacho asíncrono del job de OCR.
+ *
+ * Los administradores acceden a todos los documentos; los usuarios solo a los propios.
+ * La autorización granular se delega a los helpers `ensureCanVer`, `ensureCanEditar`
+ * y `ensurePuedeEnviar`.
+ */
 class DocumentoController extends Controller
 {
     public function __construct() {}
 
+    /**
+     * Lista los documentos con filtros avanzados: palabra clave, búsqueda FTS sobre OCR,
+     * remitente, tipo, estado de recepción, rango de fechas y presencia de OCR.
+     *
+     * Cuando hay búsqueda FTS, los resultados se ordenan por relevancia (`ts_rank`).
+     * Los administradores ven todos los documentos; los usuarios solo los suyos.
+     *
+     * @param  Request $request Filtros opcionales: `palabra_clave`, `texto_ocr`, `remitente_id`,
+     *                          `tipo`, `recibido`, `fecha_desde`, `fecha_hasta`, `con_ocr`, `per_page`.
+     * @return Response
+     */
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -109,6 +128,11 @@ class DocumentoController extends Controller
         ]);
     }
 
+    /**
+     * Muestra el formulario de creación de un nuevo documento.
+     *
+     * @return Response
+     */
     public function create(): Response
     {
         return Inertia::render('user/documentos/create', [
@@ -120,6 +144,15 @@ class DocumentoController extends Controller
         ]);
     }
 
+    /**
+     * Muestra el formulario de edición del documento.
+     *
+     * Verifica que el usuario tenga permiso de edición antes de renderizar.
+     *
+     * @param  Request $request
+     * @param  int     $documento ID del documento a editar.
+     * @return Response
+     */
     public function edit(Request $request, int $documento): Response
     {
         $documento = Documento::query()
@@ -153,6 +186,16 @@ class DocumentoController extends Controller
         ]);
     }
 
+    /**
+     * Muestra el detalle del documento con sus movimientos visibles para el usuario.
+     *
+     * Al visualizar, marca automáticamente como recibido cualquier movimiento pendiente
+     * dirigido al área del usuario ({@see autoRecibirMovimientoPendiente}).
+     *
+     * @param  Request $request
+     * @param  int     $documento ID del documento a visualizar.
+     * @return Response
+     */
     public function show(Request $request, int $documento): Response
     {
         $user = $request->user();
@@ -232,6 +275,16 @@ class DocumentoController extends Controller
         ]);
     }
 
+    /**
+     * Marca automáticamente como recibido el movimiento pendiente más reciente
+     * dirigido al área del usuario, dentro de una transacción.
+     *
+     * No hace nada si el usuario no tiene área asignada o no existe movimiento pendiente.
+     *
+     * @param  User|null $user
+     * @param  Documento $documento Documento que se está visualizando.
+     * @return void
+     */
     private function autoRecibirMovimientoPendiente(?User $user, Documento $documento): void
     {
         if ($user === null || $user->area_id === null) {
@@ -281,6 +334,14 @@ class DocumentoController extends Controller
         $documento->setAttribute('recibido', 'recibido');
     }
 
+    /**
+     * Actualiza los datos del documento. Si se sube un nuevo archivo, lo almacena
+     * con el ID como nombre, resetea el OCR y despacha el job de extracción.
+     *
+     * @param  UpdateDocumentoRequest $request  Datos validados del documento.
+     * @param  int                   $documento ID del documento a actualizar.
+     * @return RedirectResponse
+     */
     public function update(UpdateDocumentoRequest $request, int $documento): RedirectResponse
     {
         $documento = Documento::query()->findOrFail($documento);
@@ -314,6 +375,16 @@ class DocumentoController extends Controller
         return to_route('user.documentos.show', $documento->id_documento);
     }
 
+    /**
+     * Crea un nuevo documento, sube el archivo con nombre basado en el ID generado
+     * y despacha el job de OCR asíncrono.
+     *
+     * El archivo se guarda temporalmente antes de la creación del registro para obtener
+     * el hash del nombre; luego se mueve al path definitivo `documentos/{id}.ext`.
+     *
+     * @param  StoreDocumentoRequest $request Datos validados incluyendo el archivo PDF.
+     * @return RedirectResponse
+     */
     public function store(StoreDocumentoRequest $request): RedirectResponse
     {
         $user = $request->user();
@@ -364,6 +435,15 @@ class DocumentoController extends Controller
         return to_route('user.documentos.index');
     }
 
+    /**
+     * Elimina el documento si no tiene movimientos ni documentos hijos asociados.
+     *
+     * Los usuarios solo pueden eliminar sus propios documentos; el admin puede eliminar cualquiera.
+     *
+     * @param  Request $request
+     * @param  int     $documento ID del documento a eliminar.
+     * @return RedirectResponse
+     */
     public function destroy(Request $request, int $documento): RedirectResponse
     {
         $user = $request->user();
@@ -393,6 +473,12 @@ class DocumentoController extends Controller
         return to_route('user.documentos.index')->with('success', 'El oficio fue eliminado correctamente.');
     }
 
+    /**
+     * Construye el mensaje de error explicando por qué no se puede eliminar el documento.
+     *
+     * @param  Documento $documento
+     * @return string Mensaje legible con las dependencias encontradas.
+     */
     private function buildDocumentoDeleteReason(Documento $documento): string
     {
         $reasons = [];
@@ -412,6 +498,12 @@ class DocumentoController extends Controller
         return "No se puede eliminar este oficio porque tiene {$details}.";
     }
 
+    /**
+     * Lista los documentos eliminados (soft deleted) con filtros y paginación. Solo admin.
+     *
+     * @param  Request $request Filtros opcionales: `palabra_clave`, `remitente_id`, `tipo`, `recibido`, `per_page`.
+     * @return Response
+     */
     public function deletedIndex(Request $request): Response
     {
         $perPage = (int) $request->integer('per_page', 5);
@@ -463,6 +555,13 @@ class DocumentoController extends Controller
         ]);
     }
 
+    /**
+     * Restaura un documento que fue eliminado con soft delete. Solo admin.
+     *
+     * @param  Request $request
+     * @param  int     $documento ID del documento en la papelera.
+     * @return RedirectResponse
+     */
     public function restore(Request $request, int $documento): RedirectResponse
     {
         $user = $request->user();
@@ -476,6 +575,16 @@ class DocumentoController extends Controller
         return to_route('admin.documentos.deleted')->with('success', 'El oficio fue restaurado correctamente.');
     }
 
+    /**
+     * Mueve el archivo subido al path definitivo `documentos/{id}.{ext}` en el disco público.
+     *
+     * El archivo se guarda primero en `documentos/tmp`, luego se renombra para garantizar
+     * que el nombre refleje el ID real del documento.
+     *
+     * @param  UploadedFile $archivo   Archivo subido por el usuario.
+     * @param  Documento    $documento Documento ya persistido cuyo ID se usa como nombre.
+     * @return string Path final relativo al disco público.
+     */
     private function storeArchivoConDocumentoId(UploadedFile $archivo, Documento $documento): string
     {
         $temporaryPath = $archivo->store('documentos/tmp', 'public');
@@ -488,6 +597,15 @@ class DocumentoController extends Controller
         return $finalPath;
     }
 
+    /**
+     * Lanza 403 si el usuario no tiene permiso para ver el documento.
+     *
+     * Puede ver: admin, consultor, creador del documento, área actual o área creadora.
+     *
+     * @param  Request   $request
+     * @param  Documento $documento
+     * @return void
+     */
     private function ensureCanVer(Request $request, Documento $documento): void
     {
         $user = $request->user();
@@ -505,6 +623,15 @@ class DocumentoController extends Controller
         );
     }
 
+    /**
+     * Lanza 403 si el usuario no tiene permiso para editar el documento.
+     *
+     * Puede editar: admin o el creador del documento.
+     *
+     * @param  Request   $request
+     * @param  Documento $documento
+     * @return void
+     */
     private function ensureCanEditar(Request $request, Documento $documento): void
     {
         $user = $request->user();
@@ -519,6 +646,15 @@ class DocumentoController extends Controller
         );
     }
 
+    /**
+     * Lanza 403 si el usuario no tiene permiso para enviar el documento a otra área.
+     *
+     * Puede enviar: admin o usuario cuya área coincide con el área actual del documento.
+     *
+     * @param  Request   $request
+     * @param  Documento $documento
+     * @return void
+     */
     private function ensurePuedeEnviar(Request $request, Documento $documento): void
     {
         $user = $request->user();
@@ -533,6 +669,14 @@ class DocumentoController extends Controller
         );
     }
 
+    /**
+     * Registra un error crítico de base de datos en el canal `errores`.
+     *
+     * @param  string    $message   Descripción del error.
+     * @param  Throwable $exception Excepción capturada.
+     * @param  array<string, mixed> $context Datos de contexto adicionales.
+     * @return void
+     */
     private function logDatabaseError(string $message, Throwable $exception, array $context): void
     {
         Log::channel('errores')->critical($message, [

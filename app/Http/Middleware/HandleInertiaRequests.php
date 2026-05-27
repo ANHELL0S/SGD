@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
+/**
+ * Configura el middleware de Inertia: template raíz, versionado de assets y props globales.
+ *
+ * Props compartidas con todas las páginas: datos del usuario autenticado, contadores
+ * de pendientes (usuarios para admin, movimientos para usuarios), estado del sidebar
+ * y mensajes flash de sesión.
+ */
 class HandleInertiaRequests extends Middleware
 {
     /**
@@ -30,10 +37,15 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Define the props that are shared by default.
+     * Define las props compartidas globalmente con todas las páginas Inertia.
+     *
+     * Incluye: `auth.user` (datos del usuario), `pendingCount` (usuarios pendientes, solo admin),
+     * `pendingMovimientosCount` (movimientos sin respuesta, solo usuario con área),
+     * `sidebarOpen` (estado del sidebar), `flash` (mensajes de sesión) y `name` (app name).
      *
      * @see https://inertiajs.com/shared-data
      *
+     * @param  Request $request
      * @return array<string, mixed>
      */
     public function share(Request $request): array

@@ -89,6 +89,16 @@ const defaultFilters: FilterState = {
     per_page: '5',
 };
 
+/**
+ * Lista de documentos del usuario con filtros avanzados.
+ *
+ * Filtros disponibles: palabra clave, texto OCR (búsqueda full-text, debounced 1500 ms),
+ * remitente, tipo, estado (`recibido`), rango de fechas y toggle `con_ocr`.
+ * La tabla se delega a `DataTable` para desacoplar el renderizado de filas.
+ * `busqueda_activa` indica si hay algún filtro aplicado (controla el estado vacío).
+ * Los admins ven todos los documentos; los usuarios solo los propios.
+ * Accesible para usuarios con rol `user` y `admin`.
+ */
 export default function Index({ documentos, remitentes, filters, busqueda_activa }: Props) {
     const [openDesde, setOpenDesde] = useState<boolean>(false);
     const [openHasta, setOpenHasta] = useState<boolean>(false);
@@ -114,6 +124,7 @@ export default function Index({ documentos, remitentes, filters, busqueda_activa
 
     const ocrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    /** Busca en el contenido OCR con debounce de 1500 ms para evitar peticiones en cada tecla. */
     const handleOcrBusqueda = (value: string) => {
         setData('texto_ocr', value);
 

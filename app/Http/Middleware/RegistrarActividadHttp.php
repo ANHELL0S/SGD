@@ -8,8 +8,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Registra en {@see LogSistema} la actividad HTTP de operaciones CRUD relevantes.
+ *
+ * Solo persiste peticiones POST/PUT/PATCH/DELETE que afecten rutas relacionadas con
+ * áreas, documentos, movimientos, remitentes o usuarios. Los assets estáticos y las
+ * pruebas unitarias se omiten automáticamente.
+ */
 class RegistrarActividadHttp
 {
+    /**
+     * Intercepta la petición, mide el tiempo de respuesta y registra el log si aplica.
+     *
+     * El filtrado se delega a {@see debeOmitir} y a la verificación de método/ruta.
+     *
+     * @param  Request $request
+     * @param  Closure $next
+     * @return Response
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $inicio = microtime(true);
@@ -72,6 +88,16 @@ class RegistrarActividadHttp
         return $response;
     }
 
+    /**
+     * Extrae y serializa el body de la petición, sanitizando campos sensibles.
+     *
+     * Para JSON devuelve el body decodificado y re-codificado con pretty print;
+     * para formularios excluye `_token`, `password` y `password_confirmation`.
+     * Devuelve `null` si no hay payload o si ocurre un error.
+     *
+     * @param  Request $request
+     * @return string|null JSON codificado o null.
+     */
     private function capturarPayload(Request $request): ?string
     {
         try {
@@ -96,6 +122,17 @@ class RegistrarActividadHttp
         return null;
     }
 
+    /**
+     * Extrae un fragmento del body de la respuesta para almacenarlo en el log.
+     *
+     * - JSON: formatea con pretty print completo.
+     * - HTML: trunca a 500 caracteres.
+     * - Otros: trunca a 1000 caracteres.
+     * Devuelve `null` si el contenido está vacío o ocurre un error.
+     *
+     * @param  Response $response
+     * @return string|null
+     */
     private function capturarResponse(Response $response): ?string
     {
         try {
@@ -124,6 +161,15 @@ class RegistrarActividadHttp
         }
     }
 
+    /**
+     * Reemplaza valores de campos sensibles con `'***REDACTADO***'` de forma recursiva.
+     *
+     * Los campos considerados sensibles son: `password`, `password_confirmation`,
+     * `token`, `api_key` y `secret`.
+     *
+     * @param  array<string, mixed> $datos
+     * @return array<string, mixed>
+     */
     private function sanitizar(array $datos): array
     {
         $camposSensibles = ['password', 'password_confirmation', 'token', 'api_key', 'secret'];
@@ -139,6 +185,15 @@ class RegistrarActividadHttp
         return $datos;
     }
 
+    /**
+     * Determina si la petición debe excluirse del log.
+     *
+     * Se omiten: ejecuciones de tests unitarios y peticiones cuya ruta termina
+     * en extensión de asset estático (css, js, imágenes, fuentes, etc.).
+     *
+     * @param  Request $request
+     * @return bool `true` si la petición debe ignorarse.
+     */
     private function debeOmitir(Request $request): bool
     {
         if (app()->runningUnitTests()) {

@@ -9,6 +9,13 @@ import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 
+/**
+ * Página de configuración de perfil: actualiza nombre y correo electrónico.
+ *
+ * Muestra un aviso de verificación pendiente si `mustVerifyEmail` es `true` y el
+ * campo `email_verified_at` del usuario es null. El parámetro `status` puede tomar
+ * el valor `'verification-link-sent'` para mostrar confirmación de reenvío.
+ */
 export default function Profile({
     mustVerifyEmail,
     status,

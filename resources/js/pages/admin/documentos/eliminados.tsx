@@ -116,6 +116,11 @@ const defaultFilters: FilterState = {
 
 const PROJECT_TIME_ZONE = 'America/Guayaquil';
 
+/**
+ * Formatea una fecha para mostrarla en la tabla.
+ * Detecta si el valor es solo fecha (`YYYY-MM-DD`) o un datetime completo y aplica
+ * la conversión correcta para evitar el desfase de zona horaria en fechas sin hora.
+ */
 function formatDate(value: string | null): string {
     if (!value) {
         return '-';
@@ -136,6 +141,14 @@ function formatDate(value: string | null): string {
     });
 }
 
+/**
+ * Vista de documentos eliminados (papelera) para administradores.
+ *
+ * Lista todos los oficios con soft delete, permite filtrar por tipo, remitente,
+ * estado (`recibido`) y palabra clave. Cada fila tiene un botón "Restaurar" que
+ * abre un AlertDialog de confirmación antes de hacer el PATCH al servidor.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Eliminados({ documentos, remitentes, filters }: Props) {
     const { flash } = usePage().props as {
         flash?: { success?: string | null };
@@ -231,6 +244,7 @@ export default function Eliminados({ documentos, remitentes, filters }: Props) {
         return value.replace('_', ' ');
     };
 
+    /** Devuelve las clases Tailwind para el badge de tipo (interno / externo). */
     const getTypeColor = (type: string): string => {
         const normalizedType = type.toLowerCase();
 

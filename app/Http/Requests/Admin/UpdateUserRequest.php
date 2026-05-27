@@ -9,15 +9,34 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * Valida la actualización de un usuario existente por el administrador.
+ *
+ * Idéntica a {@see StoreUserRequest} salvo que:
+ * - La unicidad de cédula y email excluye al propio usuario (`ignore`).
+ * - La contraseña es opcional: si se envía vacía se normaliza a `null` y no se valida.
+ */
 class UpdateUserRequest extends FormRequest
 {
     use PasswordValidationRules;
 
+    /**
+     * Cualquier usuario autenticado puede realizar esta acción;
+     * la restricción de rol se aplica en el middleware de la ruta.
+     *
+     * @return bool
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Normaliza los campos de texto y convierte contraseña vacía a `null`
+     * para que la regla `nullable` la omita correctamente.
+     *
+     * @return void
+     */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -50,6 +69,12 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
+     * Reglas de validación para la actualización del usuario.
+     *
+     * Igual que en creación, pero la unicidad de `cedula` y `email` ignora
+     * el registro actual del usuario para permitir guardar sin cambiarlos.
+     * La contraseña es `nullable`: si viene vacía, no se valida ni se actualiza.
+     *
      * @return array<string, array<int, string>|string>
      */
     public function rules(): array
@@ -69,6 +94,8 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
+     * Mensajes de error personalizados para las reglas más restrictivas.
+     *
      * @return array<string, string>
      */
     public function messages(): array

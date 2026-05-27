@@ -95,6 +95,18 @@ const consultorNavItems: NavItem[] = [
 ];
 
 
+/**
+ * Barra lateral de navegación adaptada al rol del usuario autenticado.
+ *
+ * - **Polling cada 2 s** (`usePoll`): refresca `pendingCount` (usuarios pendientes de aprobación)
+ *   y `pendingMovimientosCount` (movimientos sin responder). Se pausa automáticamente en la página
+ *   de monitoreo para evitar interferir con su propio ciclo de actualización.
+ * - **WebSocket** (solo rol `user`): escucha el canal privado `areas.{areaId}.movimientos` y
+ *   recarga los contadores al recibir el evento `documento.movimiento.actualizado`. El canal se
+ *   abandona al desmontar para evitar fugas de memoria.
+ * - Los badges sobre "Usuarios" y "Mis movimientos" se calculan con `useMemo` para evitar
+ *   renders innecesarios cuando los contadores no cambian.
+ */
 export function AppSidebar() {
     const page = usePage();
     const { auth, pendingCount, pendingMovimientosCount } = page.props as {

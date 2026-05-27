@@ -57,6 +57,7 @@ return '-';
     });
 };
 
+/** Devuelve label, clases y componente de icono para el badge de estado del usuario. */
 const estadoConfig = (estado: UserDetail['estado']) => {
     if (estado === 'aprobado') {
 return {
@@ -88,6 +89,7 @@ return {
 // SUB-COMPONENTES
 // ============================================================================
 
+/** Fila de detalle con icono, etiqueta y contenido; separada del siguiente ítem con un borde inferior. */
 function InfoRow({ icon: Icon, label, children }: {
     icon: React.ElementType;
     label: string;
@@ -110,6 +112,7 @@ function InfoRow({ icon: Icon, label, children }: {
     );
 }
 
+/** Tarjeta con título y lista de `InfoRow` para agrupar campos relacionados. */
 function SectionPanel({ title, children }: {
     title: string;
     children: React.ReactNode;
@@ -128,6 +131,14 @@ function SectionPanel({ title, children }: {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
+/**
+ * Vista de detalle de un usuario para el administrador.
+ *
+ * Muestra avatar con iniciales (nombre[0]+apellido[0]), badge de estado/habilitado,
+ * e información completa agrupada en secciones (datos personales, cuenta, área/rol).
+ * La fecha se formatea con hora en zona horaria America/Guayaquil.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Show({ user }: Props) {
     const fullName = `${user.nombre} ${user.apellido}`.trim();
     const estado = estadoConfig(user.estado);

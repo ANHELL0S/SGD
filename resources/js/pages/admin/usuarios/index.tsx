@@ -83,6 +83,7 @@ type Props = {
     };
 };
 
+/** Devuelve las clases CSS del badge de estado para la tabla de usuarios. */
 function estadoBadgeClass(estado: UserRow['estado'] | 'deshabilitado'): string {
     if (estado === 'aprobado') {
 return 'inline-flex items-center rounded-full border border-chart-4/30 bg-chart-4/10 px-2.5 py-0.5 text-[12px] font-bold text-chart-4 shadow-sm backdrop-blur-sm';
@@ -99,6 +100,7 @@ return 'rounded-full border-amber-200 bg-amber-100 text-amber-800 font-semibold'
     return 'rounded-full border-rose-200 bg-rose-100 text-rose-800 font-semibold';
 }
 
+/** Normaliza el estado visible: un usuario aprobado pero con `habilitado=false` se muestra como 'deshabilitado'. */
 function estadoVisible(user: UserRow): UserRow['estado'] | 'deshabilitado' {
     if (user.estado === 'aprobado' && user.habilitado === false) {
 return 'deshabilitado';
@@ -119,6 +121,13 @@ function paginationLabel(label: string): string {
         .replace('pagination.next', 'Siguiente');
 }
 
+/**
+ * Lista de usuarios del sistema con dos pestañas: "Registrados" (aprobados/rechazados)
+ * y "Solicitudes" (pendientes). Permite aprobar, rechazar, deshabilitar y habilitar
+ * usuarios con PATCH parcial (solo recarga `approvedUsers` y `pendingUsers`).
+ * `processingUserId` evita doble clic bloqueando las acciones mientras hay una en curso.
+ * Solo accesible para usuarios con rol `admin`.
+ */
 export default function Index({ approvedUsers, pendingUsers, filters }: Props) {
     const [processingUserId, setProcessingUserId] = useState<number | null>(
         null,

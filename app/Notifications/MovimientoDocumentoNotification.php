@@ -10,10 +10,21 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
+/**
+ * Notifica al destinatario de un movimiento que recibió un nuevo oficio.
+ *
+ * Se envía por correo electrónico en cuanto el movimiento es creado. Incluye
+ * número de oficio, asunto, tipo, área de origen, área destino, fecha de envío
+ * y comentario opcional. Implementa `ShouldQueue` para no bloquear la petición HTTP.
+ */
 class MovimientoDocumentoNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * @param Documento  $documento  Documento al que pertenece el movimiento.
+     * @param Movimiento $movimiento Movimiento recién creado que origina la notificación.
+     */
     public function __construct(
         private readonly Documento $documento,
         private readonly Movimiento $movimiento,

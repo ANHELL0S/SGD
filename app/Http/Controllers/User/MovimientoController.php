@@ -24,12 +24,29 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
 
+/**
+ * Gestiona el envío, recepción y respuesta de movimientos de documentos entre áreas.
+ *
+ * Agrupa los movimientos por expediente para la vista principal, aplica paginación
+ * manual en tres pestañas independientes (activos / cerrados / vencidos), emite
+ * eventos de broadcasting en tiempo real y envía notificaciones por correo.
+ */
 class MovimientoController extends Controller
 {
+    /**
+     * @param OcrService $ocrService Servicio de extracción OCR sincrónico para respuestas.
+     */
     public function __construct(private readonly OcrService $ocrService) {}
 
     /**
-     * Lista de movimientos agrupados por conversación/hilo
+     * Lista los movimientos del usuario agrupados por expediente, separados en tres
+     * colecciones paginadas: activos, cerrados y vencidos (con movimiento bloqueado).
+     *
+     * Soporta búsqueda independiente por pestaña sobre el asunto del expediente.
+     *
+     * @param  Request $request Parámetros opcionales: `per_page`, `activos_page`, `cerrados_page`,
+     *                          `vencidos_page`, `busqueda_activos`, `busqueda_cerrados`, `busqueda_vencidos`, `tab`.
+     * @return Response
      */
     public function index(Request $request): Response
     {
@@ -225,7 +242,16 @@ class MovimientoController extends Controller
     }
 
     /**
-     * Enviar un documento a otra área o usuario
+     * Envía un documento a otra área, creando un expediente automáticamente si el documento
+     * no tiene uno asignado. Bloquea el envío si el expediente está cerrado o hay
+     * una recepción pendiente en el área actual.
+     *
+     * Dentro de una transacción: crea el movimiento, actualiza el área actual del documento
+     * y emite el evento de broadcasting + notificación por correo a los destinatarios.
+     *
+     * @param  StoreMovimientoRequest $request Datos validados: `id_documento`, `a_area_id`,
+     *                                         `destinatario_user_id` (opcional), `comentario`.
+     * @return RedirectResponse
      */
     public function store(StoreMovimientoRequest $request): RedirectResponse
     {
@@ -383,7 +409,14 @@ class MovimientoController extends Controller
     }
 
     /**
-     * Marcar un movimiento como recibido
+     * Marca un movimiento como recibido y actualiza el estado del documento a `recibido`.
+     *
+     * Solo el área destino (y el destinatario específico si aplica) puede marcar la recepción.
+     * Emite evento de broadcasting tras la transacción.
+     *
+     * @param  Request    $request
+     * @param  Movimiento $movimiento Movimiento a recibir (route model binding).
+     * @return RedirectResponse
      */
     public function marcarRecibido(Request $request, Movimiento $movimiento): RedirectResponse
     {
@@ -446,7 +479,14 @@ class MovimientoController extends Controller
     }
 
     /**
-     * Mostrar detalle de un movimiento
+     * Muestra el detalle de un movimiento con su documento y el historial del hilo.
+     *
+     * Si el usuario pertenece al área destino y no ha recibido el movimiento,
+     * lo marca automáticamente como recibido al visualizarlo.
+     *
+     * @param  Request    $request
+     * @param  Movimiento $movimiento Movimiento a visualizar (route model binding).
+     * @return Response
      */
     public function show(Request $request, Movimiento $movimiento): Response
     {
@@ -555,7 +595,13 @@ class MovimientoController extends Controller
     }
 
     /**
-     * Mostrar formulario para responder un movimiento
+     * Muestra el formulario para responder un movimiento entrante.
+     *
+     * Bloquea el acceso si el expediente está cerrado o el usuario no es el destinatario.
+     *
+     * @param  Request    $request
+     * @param  Movimiento $movimiento Movimiento a responder (route model binding).
+     * @return Response|RedirectResponse
      */
     public function responder(Request $request, Movimiento $movimiento): Response|RedirectResponse
     {
@@ -596,7 +642,13 @@ class MovimientoController extends Controller
     }
 
     /**
-     * Crear y enviar una respuesta a un movimiento
+     * Procesa y almacena la respuesta a un movimiento.
+     *
+     * Delega a {@see storeRespuestaComentario} si el flag `solo_comentario` está activo,
+     * o a {@see storeRespuestaDocumento} si se sube un archivo de respuesta.
+     *
+     * @param  StoreRespuestaOficioRequest $request Datos validados de la respuesta.
+     * @return RedirectResponse
      */
     public function storeRespuesta(StoreRespuestaOficioRequest $request): RedirectResponse
     {
@@ -627,6 +679,18 @@ class MovimientoController extends Controller
         return $this->storeRespuestaDocumento($request, $user, $movimiento);
     }
 
+    /**
+     * Registra una respuesta textual al movimiento sin generar un nuevo documento.
+     *
+     * Crea un movimiento de respuesta B→A sobre el mismo documento, marca el original
+     * como respondido y, si aplica, lo marca como recibido en la misma transacción.
+     * Emite broadcasting y notificación por correo.
+     *
+     * @param  StoreRespuestaOficioRequest $request
+     * @param  \App\Models\User            $user
+     * @param  Movimiento                  $movimiento Movimiento original a responder.
+     * @return RedirectResponse
+     */
     private function storeRespuestaComentario(
         StoreRespuestaOficioRequest $request,
         \App\Models\User $user,
@@ -724,6 +788,18 @@ class MovimientoController extends Controller
             ->with('success', 'La respuesta fue registrada correctamente.');
     }
 
+    /**
+     * Crea un documento de respuesta (nuevo oficio hijo) y lo envía al área origen.
+     *
+     * Dentro de una transacción: sube el archivo, ejecuta OCR sincrónico, crea el
+     * documento hijo vinculado al hilo, genera el movimiento de respuesta B→A y
+     * actualiza el área actual del documento. Emite broadcasting y notificación por correo.
+     *
+     * @param  StoreRespuestaOficioRequest $request
+     * @param  \App\Models\User            $user
+     * @param  Movimiento                  $movimiento Movimiento original al que se responde.
+     * @return RedirectResponse
+     */
     private function storeRespuestaDocumento(
         StoreRespuestaOficioRequest $request,
         \App\Models\User $user,
@@ -875,7 +951,13 @@ class MovimientoController extends Controller
     }
 
     /**
-     * Cargar más movimientos de un grupo (paginación AJAX)
+     * Carga movimientos adicionales de un grupo (expediente, hilo o movimiento individual) vía AJAX.
+     *
+     * El parámetro `grupo` acepta los prefijos: `exp:{id}`, `raiz:{id}`, `mov:{id}`.
+     * Aplica el scope de área del usuario y devuelve `has_more` para paginación incremental.
+     *
+     * @param  Request $request Parámetros: `grupo`, `offset`, `limit`.
+     * @return \Illuminate\Http\JsonResponse
      */
     public function cargarMasPorGrupo(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -1014,6 +1096,13 @@ class MovimientoController extends Controller
 
     // ==================== MÉTODOS PROTEGIDOS/PRIVADOS ====================
 
+    /**
+     * Cuenta los días laborales (lunes a viernes) entre dos fechas, sin incluir el día inicial.
+     *
+     * @param  \Carbon\CarbonInterface $inicio Fecha de inicio.
+     * @param  \Carbon\CarbonInterface $fin    Fecha de fin.
+     * @return int
+     */
     private function calcularDiasLaborales(\Carbon\CarbonInterface $inicio, \Carbon\CarbonInterface $fin): int
 {
     $dias = 0;
@@ -1030,6 +1119,15 @@ class MovimientoController extends Controller
     return $dias;
 }
 
+    /**
+     * Crea y persiste el registro del documento de respuesta vinculado al hilo y al movimiento origen.
+     *
+     * @param  StoreRespuestaOficioRequest $request
+     * @param  User                        $user
+     * @param  Movimiento                  $movimiento  Movimiento al que se responde.
+     * @param  int                         $hiloId      ID del documento raíz del hilo de conversación.
+     * @return Documento Documento recién creado con path temporal aún sin renombrar.
+     */
     protected function crearDocumentoRespuesta(
         StoreRespuestaOficioRequest $request,
         User $user,
@@ -1052,6 +1150,13 @@ class MovimientoController extends Controller
         ]);
     }
 
+    /**
+     * Mueve el archivo subido al path definitivo `documentos/{id}.{ext}` en el disco público.
+     *
+     * @param  UploadedFile $archivo   Archivo subido por el usuario.
+     * @param  Documento    $documento Documento ya persistido cuyo ID se usa como nombre.
+     * @return string Path final relativo al disco público.
+     */
     private function storeArchivoConDocumentoId(UploadedFile $archivo, Documento $documento): string
     {
         $temporaryPath = $archivo->store('documentos/tmp', 'public');
@@ -1064,6 +1169,14 @@ class MovimientoController extends Controller
         return $finalPath;
     }
 
+    /**
+     * Registra un error de OCR en el canal `errores` con nivel `error`.
+     *
+     * @param  string               $message
+     * @param  Throwable            $exception
+     * @param  array<string, mixed> $context
+     * @return void
+     */
     private function logOcrError(string $message, Throwable $exception, array $context): void
     {
         Log::channel('errores')->error($message, [
@@ -1073,6 +1186,19 @@ class MovimientoController extends Controller
         ]);
     }
 
+    /**
+     * Envía una notificación por correo a los destinatarios del movimiento.
+     *
+     * Si hay `$destinatarioUserId` notifica solo a ese usuario; de lo contrario,
+     * notifica a todos los usuarios activos del área destino. Los errores se absorben
+     * y se registran en el canal `errores` para no interrumpir el flujo principal.
+     *
+     * @param  Documento $documento
+     * @param  Movimiento $movimiento
+     * @param  int        $aAreaId          ID del área destino.
+     * @param  int|null   $destinatarioUserId ID del usuario específico, o null para el área completa.
+     * @return void
+     */
     private function notificarDestinatarios(
         Documento $documento,
         Movimiento $movimiento,
@@ -1108,6 +1234,14 @@ class MovimientoController extends Controller
         }
     }
 
+    /**
+     * Registra un error crítico de base de datos en el canal `errores`.
+     *
+     * @param  string               $message
+     * @param  Throwable            $exception
+     * @param  array<string, mixed> $context
+     * @return void
+     */
     private function logDatabaseError(string $message, Throwable $exception, array $context): void
     {
         Log::channel('errores')->critical($message, [
@@ -1117,6 +1251,16 @@ class MovimientoController extends Controller
         ]);
     }
 
+    /**
+     * Despacha el evento {@see DocumentoMovimientoActualizado} para broadcasting en tiempo real.
+     *
+     * Los errores se absorben y se registran en `errores` para no interrumpir el flujo.
+     *
+     * @param  string               $accion   Acción ocurrida: 'enviado', 'recibido', 'respondido'.
+     * @param  array<string, mixed> $payload  Datos del evento.
+     * @param  array<int, int|null> $areaIds  IDs de las áreas implicadas para filtrar listeners.
+     * @return void
+     */
     private function dispatchMovimientoActualizado(string $accion, array $payload, array $areaIds): void
     {
         try {
@@ -1131,6 +1275,16 @@ class MovimientoController extends Controller
         }
     }
 
+    /**
+     * Construye el payload completo del evento de broadcasting para un movimiento.
+     *
+     * Incluye datos del movimiento, documento, áreas origen/destino, usuario que actúa
+     * y el destinatario, más un timestamp de emisión.
+     *
+     * @param  Movimiento $movimiento Movimiento con relaciones `documento`, `deArea`, `aArea` y `destinatario` cargadas.
+     * @param  User       $usuario    Usuario que realizó la acción.
+     * @return array<string, mixed>
+     */
     private function buildBroadcastPayload(Movimiento $movimiento, User $usuario): array
     {
         return [

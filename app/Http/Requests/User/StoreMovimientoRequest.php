@@ -6,10 +6,18 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Valida el envío de un documento a otra área (creación de un movimiento).
+ *
+ * El destinatario debe ser un usuario aprobado, habilitado y perteneciente
+ * al área destino indicada en `a_area_id`.
+ */
 class StoreMovimientoRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Solo usuarios autenticados pueden enviar documentos.
+     *
+     * @return bool
      */
     public function authorize(): bool
     {
@@ -17,7 +25,12 @@ class StoreMovimientoRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Reglas de validación del movimiento.
+     *
+     * - `id_documento`:        obligatorio, debe existir en `documentos` sin soft delete.
+     * - `a_area_id`:           obligatorio, debe existir en `areas`.
+     * - `destinatario_user_id`: obligatorio, debe ser usuario aprobado, habilitado y del área destino.
+     * - `comentario`:          obligatorio, máx. 400 caracteres.
      *
      * @return array<string, array<int, ValidationRule|string>|string>
      */

@@ -8,8 +8,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Registra automáticamente en el log toda acción CRUD sobre el modelo que lo usa.
+ *
+ * Engancha los eventos de Eloquent (created, updated, deleted y, si aplica, restored)
+ * para escribir entradas de auditoría en el canal `database`. Los cambios se sanitizan:
+ * las marcas de tiempo se omiten, los campos sensibles (password, tokens) se redactan
+ * como `[REDACTED]` y los valores de más de 500 caracteres se truncan.
+ */
 trait AuditsCrudActivity
 {
+    /**
+     * Registra los listeners de Eloquent al arrancar el trait en el modelo.
+     * El listener `restored` solo se añade si el modelo usa `SoftDeletes`.
+     */
     protected static function bootAuditsCrudActivity(): void
     {
         static::created(function (Model $model): void {
@@ -57,16 +69,19 @@ trait AuditsCrudActivity
         return $this->sanitizeChanges($changes);
     }
 
+    /** Canal de log donde se escriben las entradas de auditoría. */
     protected function auditChannel(): string
     {
         return 'database';
     }
 
+    /** Nombre corto en minúsculas del modelo (ej. 'documento', 'user'). */
     protected function auditEntityName(): string
     {
         return strtolower(class_basename(static::class));
     }
 
+    /** Etiqueta legible en español para el tipo de entidad auditada. */
     protected function auditEntityLabel(): string
     {
         return match ($this->auditEntityName()) {
@@ -78,6 +93,7 @@ trait AuditsCrudActivity
         };
     }
 
+    /** Devuelve 'warning' para acciones destructivas (updated/deleted) e 'info' para el resto. */
     protected function auditLevel(string $action): string
     {
         return match ($action) {
@@ -86,6 +102,7 @@ trait AuditsCrudActivity
         };
     }
 
+    /** Traducción al español del código de acción para el log. */
     protected function auditActionLabel(string $action): string
     {
         return match ($action) {
@@ -97,6 +114,7 @@ trait AuditsCrudActivity
         };
     }
 
+    /** Mensaje principal de la entrada de log, compuesto por entidad + acción. */
     protected function auditMessage(string $action): string
     {
         return match ([$this->auditEntityName(), $action]) {
@@ -125,7 +143,10 @@ trait AuditsCrudActivity
     }
 
     /**
-     * @param  array<string, mixed>  $changes
+     * Escribe la entrada de auditoría en el canal de log con contexto de IP, usuario y ruta HTTP.
+     *
+     * @param string               $action  Código del evento de Eloquent (created|updated|deleted|restored).
+     * @param array<string, mixed> $changes Mapa de cambios ya sanitizados; vacío para deleted/restored.
      */
     private function logCrudAction(string $action, array $changes = []): void
     {
@@ -151,6 +172,11 @@ trait AuditsCrudActivity
     }
 
     /**
+     * Filtra y normaliza el array de cambios para el log:
+     * - Omite marcas de tiempo (`created_at`, `updated_at`, `deleted_at`).
+     * - Sustituye campos sensibles (password, tokens 2FA) por `[REDACTED]`.
+     * - Trunca strings de más de 500 caracteres para evitar logs excesivamente grandes.
+     *
      * @param  array<string, mixed>  $changes
      * @return array<string, mixed>
      */
@@ -188,6 +214,10 @@ trait AuditsCrudActivity
         return $sanitized;
     }
 
+    /**
+     * Convierte cualquier valor a una forma segura para JSON: arrays de forma recursiva,
+     * objetos sin `__toString` a `['object' => FQN]`, resources al string `'resource'`.
+     */
     private function normalizeAuditValue(mixed $value): mixed
     {
         if (is_array($value)) {

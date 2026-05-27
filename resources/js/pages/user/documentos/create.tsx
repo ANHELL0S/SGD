@@ -62,7 +62,7 @@ type FormData = {
     archivo: File | null;
 };
 
-// Componente FormField optimizado
+/** Campo de formulario con icono, label, asterisco de requerido y zona de error/advertencia. */
 function FormField({
     label,
     required,
@@ -97,6 +97,16 @@ function FormField({
     );
 }
 
+/**
+ * Formulario de carga de un nuevo documento (oficio).
+ *
+ * Layout de dos columnas: izquierda con preview del PDF (drag & drop o click) y barra
+ * de progreso de subida; derecha con los campos del formulario gestionado por react-hook-form.
+ * Incluye un Dialog de creación rápida de remitente que llama a `/user/remitentes/quick`
+ * vía fetch nativo (no Inertia) para no interrumpir el formulario principal.
+ * El PDF se convierte en un Object URL para la preview y se revoca al desmontar.
+ * Accesible para usuarios con rol `user`.
+ */
 export default function Create({ remitentes, tipos }: Props) {
     const [processing, setProcessing] = useState(false);
     const [progress, setProgress] = useState<{ percentage: number } | null>(null);
@@ -171,6 +181,10 @@ export default function Create({ remitentes, tipos }: Props) {
         setQuickServerError(null);
     };
 
+    /**
+     * Crea un remitente vía fetch JSON, lo inserta en la lista local ordenada alfabéticamente
+     * y lo selecciona automáticamente en el campo del formulario principal.
+     */
     const handleQuickStore = async () => {
         if (!validarQuickNombre(quickNombre, true)) return;
 
@@ -225,6 +239,10 @@ URL.revokeObjectURL(previewUrlRef.current);
         };
     }, []);
 
+    /**
+     * Reemplaza el archivo seleccionado: revoca el Object URL anterior para liberar memoria
+     * y crea uno nuevo para la preview del iframe.
+     */
     const handleFile = (file: File | null): void => {
         if (processing) {
 return;
