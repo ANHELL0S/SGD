@@ -1,5 +1,5 @@
 import { Link, router, usePage, usePoll } from '@inertiajs/react';
-import { Activity, ArrowLeftRight, BookOpen, Building2, FolderGit2, FolderOpen, LayoutGrid, Mail, Trash2, Users } from 'lucide-react';
+import { Activity, ArrowLeftRight, BookOpen, Building2, FolderOpen, LayoutGrid, Mail, Trash2, Users } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { index as adminAreasIndex } from '@/actions/App/Http/Controllers/Admin/AreaController';
 import { index as adminMonitoreoIndex } from '@/actions/App/Http/Controllers/Admin/MonitoreoController';
@@ -91,6 +91,14 @@ const consultorNavItems: NavItem[] = [
         title: 'Expedientes',
         href: consultorExpedientesIndex.url(),
         icon: FolderOpen,
+    },
+];
+
+const footerNavItems: NavItem[] = [
+    {
+        title: 'Documentación',
+        href: 'https://drive.google.com/drive/folders/10G-HNrJkxLhqIOcQvD2QL9Wh_drg36o7?usp=sharing',
+        icon: BookOpen,
     },
 ];
 
@@ -229,6 +237,7 @@ export function AppSidebar() {
                         <NavMain items={consultorItems} label="Consultoría" />
                     </>
                 )}
+                <NavFooter items={footerNavItems} className="mt-auto" />
             </SidebarContent>
 
             <SidebarFooter className='h-14 justify-center border-t border-sidebar-border'>
