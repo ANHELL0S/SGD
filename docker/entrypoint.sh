@@ -30,7 +30,7 @@ php artisan storage:link --quiet 2>/dev/null || true
 echo "[entrypoint] Ejecutando migraciones..."
 php artisan migrate --force
 echo "[entrypoint] Ejecutando seeders..."
-php artisan db:seed --force
+php artisan db:seed --force || echo "[entrypoint] ADVERTENCIA: seeder falló, continuando..."
 
 # Optimizar para producción
 echo "[entrypoint] Optimizando..."

@@ -138,6 +138,45 @@ class ConsultorController extends Controller
     }
 
     /**
+     * Devuelve movimientos adicionales de un expediente para el botón "Ver más" del consultor.
+     *
+     * @param  Request    $request
+     * @param  Expediente $expediente Expediente cuyo ID se usa para filtrar (route model binding).
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function cargarMas(Request $request, Expediente $expediente): \Illuminate\Http\JsonResponse
+    {
+        $offset = max((int) $request->input('offset', 0), 0);
+        $limit  = 2;
+
+        $movimientos = $expediente->movimientos()
+            ->with([
+                'documento:id_documento,numero_oficio,asunto,palabra_clave,tipo,recibido,movimiento_origen_id',
+                'documento.movimientoOrigen:id_movimiento,documento_id,comentario,fecha_envio',
+                'documento.movimientoOrigen.documento:id_documento,numero_oficio,asunto',
+                'deArea:id_area,nombre',
+                'aArea:id_area,nombre',
+                'remitente:id_user,nombre,apellido,area_id',
+                'remitente.area:id_area,nombre',
+                'destinatario:id_user,nombre,apellido',
+                'documentosGenerados:id_documento,movimiento_origen_id',
+            ])
+            ->orderByDesc('fecha_envio')
+            ->orderByDesc('id_movimiento')
+            ->skip($offset)
+            ->take($limit + 1)
+            ->get();
+
+        $hasMore    = $movimientos->count() > $limit;
+        $movimientos = $movimientos->take($limit);
+
+        return response()->json([
+            'movimientos' => $movimientos->map(fn (Movimiento $m) => $this->formatMovimientoData($m))->values(),
+            'has_more'    => $hasMore,
+        ]);
+    }
+
+    /**
      * Envía un recordatorio por notificación al responsable de responder un movimiento.
      *
      * Aplica un cooldown de 3 horas entre recordatorios del mismo movimiento.

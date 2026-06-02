@@ -97,7 +97,8 @@ class UserController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        return to_route('admin.usuarios.show', $user);
+        return to_route('admin.usuarios.show', $user)
+            ->with('success', 'Usuario creado correctamente.');
     }
 
     /**
@@ -151,7 +152,8 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return to_route('admin.usuarios.show', $user);
+        return to_route('admin.usuarios.show', $user)
+            ->with('success', 'Usuario actualizado correctamente.');
     }
 
     /**

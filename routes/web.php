@@ -162,6 +162,7 @@ Route::prefix('consultor')
     ->middleware(['auth', 'verified', 'ensure.approved', 'check.role:consultor,admin'])
     ->group(function () {
         Route::get('expedientes', [ConsultorController::class, 'index'])->name('expedientes.index');
+        Route::get('expedientes/{expediente}/movimientos-mas', [ConsultorController::class, 'cargarMas'])->name('expedientes.movimientos-mas');
         Route::post('movimientos/{movimiento}/recordar', [ConsultorController::class, 'recordar'])->name('movimientos.recordar');
     });
 

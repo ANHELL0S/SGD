@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     Edit3,
@@ -12,6 +12,8 @@ import {
     XCircle,
     Clock,
 } from 'lucide-react';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { edit, index } from '@/routes/admin/usuarios';
@@ -140,6 +142,13 @@ function SectionPanel({ title, children }: {
  * Solo accesible para usuarios con rol `admin`.
  */
 export default function Show({ user }: Props) {
+    const { flash } = usePage().props as unknown as { flash: { success?: string; error?: string } };
+
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error);
+    }, [flash]);
+
     const fullName = `${user.nombre} ${user.apellido}`.trim();
     const estado = estadoConfig(user.estado);
     const EstadoIcon = estado.icon;

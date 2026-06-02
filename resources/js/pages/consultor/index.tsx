@@ -534,6 +534,12 @@ toast.error(flash.error);
     const [recordandoId, setRecordandoId] = useState<number | null>(null);
     const [perPage, setPerPage] = useState(String(expedientes.per_page ?? 5));
     const [refreshing, setRefreshing] = useState(false);
+    const [grupos, setGrupos] = useState<ExpedienteGroup[]>(expedientes.data ?? []);
+    const [loadingExpediente, setLoadingExpediente] = useState<number | null>(null);
+
+    useEffect(() => {
+        setGrupos(expedientes.data ?? []);
+    }, [expedientes.data]);
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -577,6 +583,36 @@ return;
                 preserveScroll: true,
                 onFinish: () => setRecordandoId(null),
             },
+        );
+    };
+
+    const handleVerMas = async (expedienteId: number, offset: number): Promise<void> => {
+        setLoadingExpediente(expedienteId);
+        try {
+            const res = await fetch(`/consultor/expedientes/${expedienteId}/movimientos-mas?offset=${offset}&limit=2`);
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            setGrupos((prev) =>
+                prev.map((e) =>
+                    e.expediente_id !== expedienteId
+                        ? e
+                        : { ...e, movimientos: [...e.movimientos, ...data.movimientos], has_more: data.has_more },
+                ),
+            );
+        } catch {
+            toast.error('No se pudo cargar más movimientos');
+        } finally {
+            setLoadingExpediente(null);
+        }
+    };
+
+    const handleOcultar = (expedienteId: number): void => {
+        setGrupos((prev) =>
+            prev.map((e) =>
+                e.expediente_id !== expedienteId
+                    ? e
+                    : { ...e, movimientos: e.movimientos.slice(0, 2), has_more: true },
+            ),
         );
     };
 
@@ -642,10 +678,32 @@ return;
                                         recordandoId={recordandoId}
                                     />
                                 ))}
-                                {expediente.has_more && (
-                                    <p className="text-xs text-muted-foreground/60 text-center py-1">
-                                        +{expediente.total_movimientos_count - expediente.movimientos.length} movimientos más
-                                    </p>
+                                {(expediente.has_more || expediente.movimientos.length > 2) && (
+                                    <div className="flex items-center justify-center gap-2 pt-1">
+                                        {expediente.has_more && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={loadingExpediente === expediente.expediente_id}
+                                                onClick={() => handleVerMas(expediente.expediente_id!, expediente.movimientos.length)}
+                                            >
+                                                {loadingExpediente === expediente.expediente_id
+                                                    ? 'Cargando...'
+                                                    : `Ver más movimientos`}
+                                            </Button>
+                                        )}
+                                        {expediente.movimientos.length > 2 && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => handleOcultar(expediente.expediente_id!)}
+                                            >
+                                                Ocultar
+                                            </Button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </AccordionContent>
@@ -798,7 +856,7 @@ return;
 
                     <TabsContent value={tab} className="mt-4">
                         {renderExpedientes(
-                            expedientes.data,
+                            grupos,
                             tab === 'cerrados' ? 'No hay expedientes cerrados' :
                             tab === 'vencidos' ? 'No hay expedientes con movimientos vencidos' :
                             'No hay expedientes activos',
