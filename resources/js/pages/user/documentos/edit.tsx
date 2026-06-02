@@ -136,6 +136,13 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
     }, []);
 
     const handleFile = (file: File | null): void => {
+        if (file && file.size > 2 * 1024 * 1024) {
+            toast.error(
+                `El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El límite permitido es 2 MB.`,
+            );
+            return;
+        }
+
         if (previewUrlRef.current) {
             URL.revokeObjectURL(previewUrlRef.current);
             previewUrlRef.current = null;
@@ -196,7 +203,11 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
                 toast.success('El oficio fue actualizado correctamente.');
             },
             onError: (errors) => {
-                setServerErrors(errors as Record<string, string>);
+                const errs = errors as Record<string, string>;
+                setServerErrors(errs);
+                if (errs.archivo) {
+                    toast.error('El archivo no pudo subirse. Verifica que sea un PDF válido y no supere los 2 MB.');
+                }
                 window.scrollTo(0, 0);
             },
             onFinish: () => {

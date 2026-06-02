@@ -12,6 +12,7 @@ import {
     Upload,
     User,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import DocumentoController from '@/actions/App/Http/Controllers/User/DocumentoController';
 import { storeRespuesta } from '@/actions/App/Http/Controllers/User/MovimientoController';
 import InputError from '@/components/input-error';
@@ -149,9 +150,14 @@ export default function Responder({ movimiento, remitentes }: Props) {
     const isServerProcessing = processing && Boolean(progress) && (progress?.percentage ?? 0) >= 100;
 
     const handleFile = (file: File | null): void => {
-        if (!file) {
-return;
-}
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error(
+                `El archivo es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El límite permitido es 2 MB.`,
+            );
+            return;
+        }
 
         setData('archivo', file);
     };
@@ -163,6 +169,11 @@ return;
             preserveScroll: true,
             onSuccess: () => {
                 router.reload({ only: ['pendingMovimientosCount'] });
+            },
+            onError: (errs) => {
+                if ((errs as Record<string, string>).archivo) {
+                    toast.error('El archivo no pudo subirse. Verifica que sea un PDF válido y no supere los 2 MB.');
+                }
             },
         });
     };
