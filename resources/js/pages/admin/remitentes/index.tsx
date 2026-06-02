@@ -64,7 +64,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import {
     Table,
     TableBody,
@@ -868,53 +867,51 @@ return;
                     }
                 }}
             >
-                <AlertDialogContent>
+                <AlertDialogContent className="sm:max-w-[420px]">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
                             {remitenteToDelete && 'deleted_at' in remitenteToDelete && remitenteToDelete.deleted_at
                                 ? 'Eliminación permanente'
                                 : 'Confirmar eliminación'}
                         </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-3 text-sm text-muted-foreground">
-                                {remitenteToDelete && 'deleted_at' in remitenteToDelete && remitenteToDelete.deleted_at ? (
-                                    <>
-                                        <p>
-                                            Este remitente será eliminado{' '}
-                                            <strong className="text-destructive">permanentemente</strong>{' '}
-                                            y no podrá recuperarse.
-                                        </p>
-                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
-                                            {remitenteToDelete.nombre}
-                                        </p>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                Escribe el nombre exacto para confirmar
-                                            </Label>
-                                            <Input
-                                                autoFocus
-                                                autoComplete="off"
-                                                value={deleteConfirmation}
-                                                onChange={(e) =>
-                                                    setDeleteConfirmation(e.target.value)
-                                                }
-                                                placeholder={remitenteToDelete.nombre}
-                                                className="border-destructive focus-visible:ring-destructive/30"
-                                            />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p>¿Seguro que deseas mover a la papelera el remitente?</p>
-                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
-                                            {remitenteToDelete?.nombre}
-                                        </p>
-                                        <p>Podrás restaurarlo después desde la papelera.</p>
-                                    </>
-                                )}
-                            </div>
+                        <AlertDialogDescription>
+                            {remitenteToDelete && 'deleted_at' in remitenteToDelete && remitenteToDelete.deleted_at ? (
+                                <>
+                                    Este remitente será eliminado{' '}
+                                    <strong className="text-destructive">permanentemente</strong>{' '}
+                                    y no podrá recuperarse.
+                                </>
+                            ) : (
+                                '¿Seguro que deseas mover a la papelera el remitente?'
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+
+                    <div className="space-y-3">
+                        <div className="break-all rounded-md border bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground">
+                            {remitenteToDelete?.nombre}
+                        </div>
+                        {remitenteToDelete && 'deleted_at' in remitenteToDelete && remitenteToDelete.deleted_at ? (
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                    Escribe el nombre exacto para confirmar
+                                </Label>
+                                <Input
+                                    autoFocus
+                                    autoComplete="off"
+                                    value={deleteConfirmation}
+                                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                                    placeholder={remitenteToDelete.nombre}
+                                    className="bg-muted/50 focus-visible:ring-destructive/30"
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Podrás restaurarlo después desde la papelera.
+                            </p>
+                        )}
+                    </div>
+
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setDeleteConfirmation('')}>
                             Cancelar

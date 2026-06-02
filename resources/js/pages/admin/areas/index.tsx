@@ -860,53 +860,51 @@ return;
                     }
                 }}
             >
-                <AlertDialogContent>
+                <AlertDialogContent className="sm:max-w-[420px]">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
                             {areaToDelete && 'deleted_at' in areaToDelete && areaToDelete.deleted_at
                                 ? 'Eliminación permanente'
                                 : 'Confirmar eliminación'}
                         </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-3 text-sm text-muted-foreground">
-                                {areaToDelete && 'deleted_at' in areaToDelete && areaToDelete.deleted_at ? (
-                                    <>
-                                        <p>
-                                            Esta área será eliminada{' '}
-                                            <strong className="text-destructive">permanentemente</strong>{' '}
-                                            y no podrá recuperarse.
-                                        </p>
-                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
-                                            {areaToDelete.nombre}
-                                        </p>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                Escribe el nombre exacto para confirmar
-                                            </Label>
-                                            <Input
-                                                autoFocus
-                                                autoComplete="off"
-                                                value={deleteConfirmation}
-                                                onChange={(e) =>
-                                                    setDeleteConfirmation(e.target.value)
-                                                }
-                                                placeholder={areaToDelete.nombre}
-                                                className="focus-visible:ring-destructive/30"
-                                            />
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p>¿Seguro que deseas mover a la papelera el área?</p>
-                                        <p className="break-all rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
-                                            {areaToDelete?.nombre}
-                                        </p>
-                                        <p>Podrás restaurarla después desde la papelera.</p>
-                                    </>
-                                )}
-                            </div>
+                        <AlertDialogDescription>
+                            {areaToDelete && 'deleted_at' in areaToDelete && areaToDelete.deleted_at ? (
+                                <>
+                                    Esta área será eliminada{' '}
+                                    <strong className="text-destructive">permanentemente</strong>{' '}
+                                    y no podrá recuperarse.
+                                </>
+                            ) : (
+                                '¿Seguro que deseas mover a la papelera el área?'
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+
+                    <div className="space-y-3">
+                        <div className="break-all rounded-md border bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground">
+                            {areaToDelete?.nombre}
+                        </div>
+                        {areaToDelete && 'deleted_at' in areaToDelete && areaToDelete.deleted_at ? (
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                    Escribe el nombre exacto para confirmar
+                                </Label>
+                                <Input
+                                    autoFocus
+                                    autoComplete="off"
+                                    value={deleteConfirmation}
+                                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                                    placeholder={areaToDelete.nombre}
+                                    className="bg-muted/50 focus-visible:ring-destructive/30"
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Podrás restaurarla después desde la papelera.
+                            </p>
+                        )}
+                    </div>
+
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setDeleteConfirmation('')}>
                             Cancelar
