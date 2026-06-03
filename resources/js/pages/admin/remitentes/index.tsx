@@ -196,7 +196,7 @@ return;
         });
     }, [activeSlide, deletedLoaded, deletedLoading]);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         nombre: '',
     });
     const {
@@ -206,6 +206,7 @@ return;
         processing: processingEdit,
         errors: editErrors,
         reset: resetEdit,
+        clearErrors: clearEditErrors,
     } = useForm({ nombre: '' });
     const {
         delete: destroyRemitente,
@@ -235,6 +236,9 @@ return;
                 setCreateOpen(false);
                 toast.success('El remitente fue creado correctamente.');
             },
+            onError: (errors) => {
+                if (errors.nombre) toast.error(errors.nombre);
+            },
         });
     };
 
@@ -251,6 +255,9 @@ return;
                 setEditingRemitente(null);
                 resetEdit();
                 toast.info('El remitente fue actualizado correctamente.');
+            },
+            onError: (errors) => {
+                if (errors.nombre) toast.error(errors.nombre);
             },
         });
     };
@@ -410,12 +417,10 @@ return;
                                         maxLength={50}
                                         placeholder="EJEMPLO: MUNICIPALIDAD 01"
                                         value={data.nombre}
-                                        onChange={(e) =>
-                                            setData(
-                                                'nombre',
-                                                normalizeRemitenteName(e.target.value),
-                                            )
-                                        }
+                                        onChange={(e) => {
+                                            setData('nombre', normalizeRemitenteName(e.target.value));
+                                            clearErrors('nombre');
+                                        }}
                                     />
                                     <InputError message={errors.nombre} />
                                 </div>
@@ -963,12 +968,10 @@ return;
                                 maxLength={50}
                                 placeholder="EJEMPLO: MUNICIPALIDAD 01"
                                 value={editData.nombre}
-                                onChange={(e) =>
-                                    setEditData(
-                                        'nombre',
-                                        normalizeRemitenteName(e.target.value),
-                                    )
-                                }
+                                onChange={(e) => {
+                                    setEditData('nombre', normalizeRemitenteName(e.target.value));
+                                    clearEditErrors('nombre');
+                                }}
                             />
                             <InputError message={editErrors.nombre} />
                         </div>

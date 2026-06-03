@@ -195,7 +195,7 @@ return;
         });
     }, [activeSlide, deletedLoaded, deletedLoading]);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         nombre: '',
     });
     const {
@@ -205,6 +205,7 @@ return;
         processing: processingEdit,
         errors: editErrors,
         reset: resetEdit,
+        clearErrors: clearEditErrors,
     } = useForm({ nombre: '' });
     const {
         delete: destroyArea,
@@ -234,6 +235,9 @@ return;
                 setCreateOpen(false);
                 toast.success('El área fue creada correctamente.');
             },
+            onError: (errors) => {
+                if (errors.nombre) toast.error(errors.nombre);
+            },
         });
     };
 
@@ -250,6 +254,9 @@ return;
                 setEditingArea(null);
                 resetEdit();
                 toast.info('El área fue actualizada correctamente.');
+            },
+            onError: (errors) => {
+                if (errors.nombre) toast.error(errors.nombre);
             },
         });
     };
@@ -409,12 +416,10 @@ return;
                                         maxLength={50}
                                         placeholder="RECURSOS HUMANOS"
                                         value={data.nombre}
-                                        onChange={(e) =>
-                                            setData(
-                                                'nombre',
-                                                normalizeAreaName(e.target.value),
-                                            )
-                                        }
+                                        onChange={(e) => {
+                                            setData('nombre', normalizeAreaName(e.target.value));
+                                            clearErrors('nombre');
+                                        }}
                                     />
                                     <InputError message={errors.nombre} />
                                 </div>
@@ -956,12 +961,10 @@ return;
                                 maxLength={50}
                                 placeholder="RECURSOS HUMANOS"
                                 value={editData.nombre}
-                                onChange={(e) =>
-                                    setEditData(
-                                        'nombre',
-                                        normalizeAreaName(e.target.value),
-                                    )
-                                }
+                                onChange={(e) => {
+                                    setEditData('nombre', normalizeAreaName(e.target.value));
+                                    clearEditErrors('nombre');
+                                }}
                             />
                             <InputError message={editErrors.nombre} />
                         </div>

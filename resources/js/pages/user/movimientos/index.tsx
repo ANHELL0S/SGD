@@ -652,10 +652,10 @@ return getRelativeTime(movimiento.fecha_envio);
                                 <DirectionIcon className="h-3.5 w-3.5" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm leading-tight font-semibold">
+                                <p className="truncate text-sm leading-tight font-semibold" title={getOficioTitle(movimiento)}>
                                     {getOficioTitle(movimiento)}
                                 </p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                <p className="mt-0.5 truncate text-xs text-muted-foreground">
                                     {getOficioIdentifier(movimiento.documento)}
                                     {movimiento.documento?.palabra_clave && (
                                         <span className="text-muted-foreground/50">
@@ -781,8 +781,8 @@ return getRelativeTime(movimiento.fecha_envio);
 
                     {/* Origen (si es respuesta a otro movimiento) */}
                     {movimiento.documento?.movimiento_origen && (
-                        <div className="rounded border-l-2 border-blue-300 bg-blue-50/50 px-2 py-1 text-xs dark:border-blue-700 dark:bg-blue-950/30">
-                            <div className="flex items-center gap-1 text-muted-foreground">
+                        <div className="overflow-hidden rounded border-l-2 border-blue-300 bg-blue-50/50 px-2 py-1 text-xs dark:border-blue-700 dark:bg-blue-950/30">
+                            <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
                                 <GitBranch className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">
                                     En respuesta a:{' '}

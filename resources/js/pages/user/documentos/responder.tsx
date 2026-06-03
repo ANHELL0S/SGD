@@ -135,7 +135,7 @@ export default function Responder({ movimiento, remitentes }: Props) {
     const remitenteNombre =
         remitentes.find((r) => r.id_remitente === movimiento.documento?.remitente_id)?.nombre ?? '-';
 
-    const { data, setData, post, processing, progress, errors } = useForm<FormData>({
+    const { data, setData, post, processing, progress, errors, clearErrors } = useForm<FormData>({
         movimiento_id: movimiento.id_movimiento,
         solo_comentario: false,
         numero_oficio: '',
@@ -160,6 +160,7 @@ export default function Responder({ movimiento, remitentes }: Props) {
         }
 
         setData('archivo', file);
+        clearErrors('archivo');
     };
 
     const onSubmit = (event: { preventDefault(): void }): void => {
@@ -169,11 +170,6 @@ export default function Responder({ movimiento, remitentes }: Props) {
             preserveScroll: true,
             onSuccess: () => {
                 router.reload({ only: ['pendingMovimientosCount'] });
-            },
-            onError: (errs) => {
-                if ((errs as Record<string, string>).archivo) {
-                    toast.error('El archivo no pudo subirse. Verifica que sea un PDF válido y no supere los 2 MB.');
-                }
             },
         });
     };
@@ -340,7 +336,7 @@ export default function Responder({ movimiento, remitentes }: Props) {
                                                     : <>Haz clic para seleccionar o arrastra el archivo</>
                                                 }
                                             </p>
-                                            <p className="text-xs text-muted-foreground/60 mt-1">Solo PDF · Máximo 4 MB</p>
+                                            <p className="text-xs text-muted-foreground/60 mt-1">Solo PDF · Máximo 2 MB</p>
                                         </div>
                                         <input
                                             id="archivo-input"

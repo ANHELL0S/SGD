@@ -1,4 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { FileText, Clock, ArrowRightLeft, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import {
     AreaChart, Area,
@@ -183,9 +184,44 @@ return;
     const totalTipo = porTipo.reduce((s, e) => s + e.total, 0);
 
     // Obtener el usuario autenticado desde las props globales de Inertia
-    const { auth } = usePage().props as { auth: { user?: { nombre?: string; apellido?: string; name?: string } } };
+    const { auth } = usePage().props as {
+        auth: { user?: { nombre?: string; apellido?: string; name?: string; rol?: string; area_id?: number | null } };
+    };
     const nombre = auth?.user?.nombre || auth?.user?.name || '';
     const apellido = auth?.user?.apellido || '';
+
+    // Actualización en tiempo real del stat "Por responder" vía WebSocket
+    useEffect(() => {
+        const areaId = auth?.user?.area_id;
+        const rol = auth?.user?.rol;
+
+        if (rol !== 'user' || !areaId) return;
+
+        const globalWithEcho = globalThis as typeof globalThis & {
+            Echo?: {
+                private: (channel: string) => {
+                    listen: (event: string, callback: () => void) => unknown;
+                    stopListening?: (event: string) => unknown;
+                };
+                leaveChannel?: (channel: string) => unknown;
+            };
+        };
+
+        const echo = globalWithEcho.Echo;
+        if (!echo) return;
+
+        const eventName = '.documento.movimiento.actualizado';
+        const channel = echo.private(`areas.${areaId}.movimientos`);
+
+        channel.listen(eventName, () => {
+            router.reload({ only: ['stats'] });
+        });
+
+        return () => {
+            channel.stopListening?.(eventName);
+            echo.leaveChannel?.(`private-areas.${areaId}.movimientos`);
+        };
+    }, [auth?.user?.area_id, auth?.user?.rol]);
 
     const statItems = [
         {

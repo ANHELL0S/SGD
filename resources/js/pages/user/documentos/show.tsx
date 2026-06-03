@@ -468,9 +468,9 @@ toast.success(flash.success, { id: 'flash-success' });
     const handleSubmitMovimiento = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        if (!canEnviar) {
-return;
-}
+        if (!canEnviar) return;
+
+        const areaNombre = areas.find((a) => String(a.id_area) === String(data.a_area_id))?.nombre;
 
         post(storeMovimiento.url(), {
             preserveScroll: true,
@@ -478,6 +478,14 @@ return;
             onSuccess: () => {
                 reset('a_area_id', 'destinatario_user_id', 'comentario');
                 setIsSendSheetOpen(false);
+                toast.success(
+                    areaNombre
+                        ? `Oficio enviado al área "${areaNombre}" correctamente.`
+                        : 'Oficio enviado correctamente.',
+                );
+            },
+            onError: () => {
+                toast.error('No se pudo enviar el oficio. Revisa los campos.');
             },
         });
     };

@@ -138,7 +138,7 @@ export default function Edit({ user, areas, roles }: Props) {
     );
     const [confirmPasswordError, setConfirmPasswordError] = React.useState<string | null>(null);
 
-    const { data, setData, patch, processing, errors, reset } = useForm({
+    const { data, setData, patch, processing, errors, reset, clearErrors } = useForm({
         nombre: user.nombre,
         apellido: user.apellido,
         cedula: user.cedula,
@@ -394,6 +394,7 @@ digitoVerificador = 0;
                                         );
                                         setData('nombre', v);
                                         validarNombre(v);
+                                        clearErrors('nombre');
                                     }}
                                     onBlur={(e) =>
                                         validarNombre(e.target.value)
@@ -416,6 +417,7 @@ digitoVerificador = 0;
                                         );
                                         setData('apellido', v);
                                         validarApellido(v);
+                                        clearErrors('apellido');
                                     }}
                                     onBlur={(e) =>
                                         validarApellido(e.target.value)
@@ -438,6 +440,7 @@ digitoVerificador = 0;
                                         );
                                         setData('cedula', v);
                                         validarCedula(v);
+                                        clearErrors('cedula');
                                     }}
                                     onBlur={(e) =>
                                         validarCedula(e.target.value)
@@ -453,9 +456,10 @@ digitoVerificador = 0;
                                     type="email"
                                     value={data.email}
                                     maxLength={75}
-                                    onChange={(e) =>
-                                        setData('email', e.target.value.toLowerCase())
-                                    }
+                                    onChange={(e) => {
+                                        setData('email', e.target.value.toLowerCase());
+                                        clearErrors('email');
+                                    }}
                                 />
                             </Field>
                         </FieldGroup>
@@ -472,9 +476,18 @@ digitoVerificador = 0;
                         </div>
 
                         <FieldGroup>
-                            <Field label="Área" error={errors.area_id}>
+                            <Field
+                                label="Área"
+                                error={errors.area_id}
+                                warning={
+                                    data.rol === 'admin' || data.rol === 'consultor'
+                                        ? 'El rol seleccionado no requiere área.'
+                                        : undefined
+                                }
+                            >
                                 <Select
                                     value={data.area_id}
+                                    disabled={data.rol === 'admin' || data.rol === 'consultor'}
                                     onValueChange={(v) => setData('area_id', v)}
                                 >
                                     <SelectTrigger id="area_id">
@@ -495,7 +508,13 @@ digitoVerificador = 0;
                             <Field label="Rol" error={errors.rol}>
                                 <Select
                                     value={data.rol}
-                                    onValueChange={(v) => setData('rol', v)}
+                                    onValueChange={(v) => {
+                                        setData('rol', v);
+                                        if (v === 'admin' || v === 'consultor') {
+                                            setData('area_id', '');
+                                            clearErrors('area_id');
+                                        }
+                                    }}
                                 >
                                     <SelectTrigger id="rol">
                                         <SelectValue placeholder="Selecciona un rol" />

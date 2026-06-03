@@ -38,6 +38,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - public_asset_SGD:/var/www/html/public
       - app_storage_SGD:/var/www/html/storage/app/public
@@ -106,7 +109,10 @@ services:
         VITE_PUSHER_APP_CLUSTER: ${PUSHER_APP_CLUSTER}
     container_name: oficios_queue
     restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=5", "--backoff=10", "--max-time=3600"]
     env_file:
       - .env
     volumes:

@@ -21,6 +21,12 @@ class MovimientoDocumentoNotification extends Notification implements ShouldQueu
 {
     use Queueable;
 
+    /** Reintentos ante fallos transitorios (ej. DNS o SMTP caído). */
+    public int $tries = 5;
+
+    /** Segundos entre reintento: 30s, 60s, 120s, 300s, 600s. */
+    public array $backoff = [30, 60, 120, 300, 600];
+
     /**
      * @param Documento  $documento  Documento al que pertenece el movimiento.
      * @param Movimiento $movimiento Movimiento recién creado que origina la notificación.

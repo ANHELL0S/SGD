@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * Valida la creación y actualización de un área.
@@ -13,23 +14,11 @@ use Illuminate\Support\Str;
  */
 class StoreAreaRequest extends FormRequest
 {
-    /**
-     * Cualquier usuario autenticado puede realizar esta acción;
-     * la restricción de rol se aplica en el middleware de la ruta.
-     *
-     * @return bool
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Normaliza `nombre`: elimina espacios extremos, colapsa espacios internos
-     * y convierte a mayúsculas antes de ejecutar la validación.
-     *
-     * @return void
-     */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -41,17 +30,24 @@ class StoreAreaRequest extends FormRequest
         ]);
     }
 
-    /**
-     * Reglas de validación del área.
-     *
-     * - `nombre`: obligatorio, solo letras Unicode y espacios, máximo 50 caracteres.
-     *
-     * @return array<string, array<int, string>|string>
-     */
     public function rules(): array
     {
+        $areaId = $this->route('area')?->id_area;
+
         return [
-            'nombre' => ['required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u'],
+            'nombre' => [
+                'required', 'string', 'max:50', 'regex:/^[\pL\s]+$/u',
+                Rule::unique('areas', 'nombre')
+                    ->whereNull('deleted_at')
+                    ->ignore($areaId, 'id_area'),
+            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'nombre.unique' => 'Ya existe un área activa con este nombre.',
         ];
     }
 }

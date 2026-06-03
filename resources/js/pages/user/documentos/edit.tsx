@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProcessingOverlay } from '@/components/ui/processing-overlay';
 import { Progress } from '@/components/ui/progress';
+import { RemitenteCombobox } from '@/components/remitente-combobox';
 import {
     Select,
     SelectContent,
@@ -370,25 +371,15 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
                                                     control={control}
                                                     rules={{ required: 'El remitente es requerido' }}
                                                     render={({ field }) => (
-                                                        <Select
-                                                            disabled={processing}
+                                                        <RemitenteCombobox
+                                                            remitentes={remitentes}
                                                             value={String(field.value || '')}
                                                             onValueChange={(v) => {
                                                                 field.onChange(v);
                                                                 setServerErrors((prev) => ({ ...prev, remitente_id: '' }));
                                                             }}
-                                                        >
-                                                            <SelectTrigger className="h-8 text-xs w-full">
-                                                                <SelectValue placeholder="Seleccionar..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {remitentes.map((r) => (
-                                                                    <SelectItem key={r.id_remitente} value={String(r.id_remitente)}>
-                                                                        <span className="truncate block max-w-[120px]" title={r.nombre}>{r.nombre}</span>
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                            disabled={processing}
+                                                        />
                                                     )}
                                                 />
                                             </FormField>

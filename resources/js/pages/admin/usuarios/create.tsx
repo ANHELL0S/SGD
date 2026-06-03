@@ -122,7 +122,7 @@ export default function Create({ areas, roles }: Props) {
     const [passwordError, setPasswordError] = React.useState<string | null>(null);
     const [confirmPasswordError, setConfirmPasswordError] = React.useState<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         nombre: '',
         apellido: '',
         cedula: '',
@@ -356,6 +356,7 @@ digitoVerificador = 0;
                                         const v = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ ]/g, '');
                                         setData('nombre', v);
                                         validarNombre(v);
+                                        clearErrors('nombre');
                                     }}
                                     onBlur={(e) => validarNombre(e.target.value)}
                                 />
@@ -371,6 +372,7 @@ digitoVerificador = 0;
                                         const v = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ ]/g, '');
                                         setData('apellido', v);
                                         validarApellido(v);
+                                        clearErrors('apellido');
                                     }}
                                     onBlur={(e) => validarApellido(e.target.value)}
                                 />
@@ -386,6 +388,7 @@ digitoVerificador = 0;
                                         const v = e.target.value.replace(/\D/g, '');
                                         setData('cedula', v);
                                         validarCedula(v);
+                                        clearErrors('cedula');
                                     }}
                                     onBlur={(e) => validarCedula(e.target.value)}
                                 />
@@ -397,7 +400,10 @@ digitoVerificador = 0;
                                     value={data.email}
                                     maxLength={75}
                                     placeholder="usuario@correo.com"
-                                    onChange={(e) => setData('email', e.target.value.toLowerCase())}
+                                    onChange={(e) => {
+                                        setData('email', e.target.value.toLowerCase());
+                                        clearErrors('email');
+                                    }}
                                 />
                             </Field>
                         </FieldGroup>
@@ -413,9 +419,18 @@ digitoVerificador = 0;
                             />
                         </div>
                         <FieldGroup>
-                            <Field label="Área" error={errors.area_id}>
+                            <Field
+                                label="Área"
+                                error={errors.area_id}
+                                warning={
+                                    data.rol === 'admin' || data.rol === 'consultor'
+                                        ? 'El rol seleccionado no requiere área.'
+                                        : undefined
+                                }
+                            >
                                 <Select
                                     value={data.area_id}
+                                    disabled={data.rol === 'admin' || data.rol === 'consultor'}
                                     onValueChange={(v) => setData('area_id', v)}
                                 >
                                     <SelectTrigger id="area_id">
@@ -436,7 +451,13 @@ digitoVerificador = 0;
                             <Field label="Rol" error={errors.rol}>
                                 <Select
                                     value={data.rol}
-                                    onValueChange={(v) => setData('rol', v)}
+                                    onValueChange={(v) => {
+                                        setData('rol', v);
+                                        if (v === 'admin' || v === 'consultor') {
+                                            setData('area_id', '');
+                                            clearErrors('area_id');
+                                        }
+                                    }}
                                 >
                                     <SelectTrigger id="rol">
                                         <SelectValue placeholder="Selecciona un rol" />

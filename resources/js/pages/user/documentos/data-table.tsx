@@ -18,6 +18,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Table,
     TableBody,
@@ -115,27 +117,38 @@ export default function DataTable({
 }: Props) {
     const [documentoToDelete, setDocumentoToDelete] =
         useState<DocumentoListado | null>(null);
+    const [typedKeyword, setTypedKeyword] = useState('');
+    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const {
         delete: destroyDocumento,
         processing,
         clearErrors,
     } = useForm<{ documento?: string }>({});
 
+    const resetDeleteState = () => {
+        setDocumentoToDelete(null);
+        setTypedKeyword('');
+        setShowFinalConfirm(false);
+        clearErrors();
+    };
+
+    const handleDeleteButtonClick = () => {
+        setShowFinalConfirm(true);
+    };
+
     const confirmDelete = (): void => {
-        if (!documentoToDelete) {
-return;
-}
+        if (!documentoToDelete) return;
 
         destroyDocumento(
             destroyDocumentoAction.url(documentoToDelete.id_documento),
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    setDocumentoToDelete(null);
-                    clearErrors();
+                    resetDeleteState();
                     toast.success('El oficio fue eliminado correctamente.');
                 },
                 onError: (errors) => {
+                    setShowFinalConfirm(false);
                     toast.error(
                         errors.documento ?? 'No se pudo eliminar el oficio.',
                     );
@@ -143,6 +156,10 @@ return;
             },
         );
     };
+
+    const isKeywordValid =
+        !documentoToDelete?.palabra_clave ||
+        typedKeyword === documentoToDelete.palabra_clave;
 
     /** El documento está en el área actual del usuario no-admin, por lo que puede enviarlo. */
     const canSendDoc = (documento: DocumentoListado): boolean =>
@@ -537,33 +554,127 @@ return;
                 </Table>
             </div>
 
+            {/* ── Paso 1: validación de palabra clave ── */}
             <AlertDialog
-                open={documentoToDelete !== null}
+                open={documentoToDelete !== null && !showFinalConfirm}
                 onOpenChange={(open) => {
-                    if (!open) {
-                        setDocumentoToDelete(null);
-                        clearErrors();
-                    }
+                    if (!open) resetDeleteState();
                 }}
             >
-                <AlertDialogContent>
+                <AlertDialogContent className="sm:max-w-[460px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Eliminar oficio</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Revisa la información del oficio. Para continuar,
+                            ingresa la palabra clave asignada.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="space-y-3">
+                        {/* Info del oficio */}
+                        <div className="rounded-md border bg-muted/50 px-3 py-2.5 space-y-1.5 text-sm overflow-hidden">
+                            <div className="flex gap-2">
+                                <span className="text-muted-foreground shrink-0">N° oficio:</span>
+                                <span className="font-semibold text-foreground min-w-0 break-all">
+                                    {documentoToDelete?.numero_oficio ?? '—'}
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="text-muted-foreground shrink-0">Asunto:</span>
+                                <span className="font-medium text-foreground min-w-0 break-all">
+                                    {documentoToDelete?.asunto ?? '—'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Input palabra clave */}
+                        {documentoToDelete?.palabra_clave ? (
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                    Palabra clave del oficio
+                                </Label>
+                                <div className="break-all rounded-md border bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground select-all">
+                                    {documentoToDelete.palabra_clave}
+                                </div>
+                                <Label className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                    Escribe la palabra clave para confirmar
+                                </Label>
+                                <Input
+                                    autoFocus
+                                    autoComplete="off"
+                                    value={typedKeyword}
+                                    onChange={(e) => setTypedKeyword(e.target.value)}
+                                    placeholder={documentoToDelete.palabra_clave}
+                                    className="bg-muted/50 focus-visible:ring-destructive/30"
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Este oficio no tiene palabra clave asignada.
+                            </p>
+                        )}
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={resetDeleteState}>
+                            Cancelar
+                        </AlertDialogCancel>
+                        <Button
+                            variant="destructive"
+                            disabled={!isKeywordValid}
+                            onClick={handleDeleteButtonClick}
+                        >
+                            Eliminar oficio
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ── Paso 2: confirmación final ── */}
+            <AlertDialog
+                open={showFinalConfirm}
+                onOpenChange={(open) => {
+                    if (!open) setShowFinalConfirm(false);
+                }}
+            >
+                <AlertDialogContent className="sm:max-w-[440px]">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Confirmar eliminacion
+                            ¿Estás seguro?
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Se eliminara el oficio{' '}
-                            {documentoToDelete?.numero_oficio ?? 'sin numero'}.
-                            Esta accion lo movera a eliminados.
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-sm">
+                                <p>Estás a punto de eliminar el siguiente oficio:</p>
+                                <div className="rounded-md border bg-muted/50 px-3 py-2.5 space-y-1.5 overflow-hidden">
+                                    <div className="flex gap-2">
+                                        <span className="text-muted-foreground shrink-0">N° oficio:</span>
+                                        <span className="font-semibold text-foreground min-w-0 break-all">
+                                            {documentoToDelete?.numero_oficio ?? '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <span className="text-muted-foreground shrink-0">Asunto:</span>
+                                        <span className="font-medium text-foreground min-w-0 break-all">
+                                            {documentoToDelete?.asunto ?? '—'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="text-destructive font-medium">
+                                    Esta acción lo moverá a la papelera.
+                                </p>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setShowFinalConfirm(false)}>
+                            Cancelar
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             variant="destructive"
+                            disabled={processing}
                             onClick={confirmDelete}
                         >
-                            Eliminar oficio
+                            {processing ? 'Eliminando...' : 'Sí, eliminar oficio'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
