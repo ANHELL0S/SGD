@@ -12,6 +12,7 @@ use App\Models\Movimiento;
 use App\Models\Remitente;
 use App\Models\User;
 use App\Notifications\MovimientoDocumentoNotification;
+use App\Services\DashboardQueryService;
 use App\Services\OcrService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -33,10 +34,10 @@ use Throwable;
  */
 class MovimientoController extends Controller
 {
-    /**
-     * @param OcrService $ocrService Servicio de extracción OCR sincrónico para respuestas.
-     */
-    public function __construct(private readonly OcrService $ocrService) {}
+    public function __construct(
+        private readonly OcrService $ocrService,
+        private readonly DashboardQueryService $dashboardQueries,
+    ) {}
 
     /**
      * Lista los movimientos del usuario agrupados por expediente, separados en tres
@@ -1264,6 +1265,7 @@ class MovimientoController extends Controller
     private function dispatchMovimientoActualizado(string $accion, array $payload, array $areaIds): void
     {
         try {
+            $this->dashboardQueries->invalidarStatsDeAreas($areaIds);
             DocumentoMovimientoActualizado::dispatch($accion, $payload, $areaIds);
         } catch (Throwable $exception) {
             Log::channel('errores')->warning('No se pudo emitir evento de movimiento en tiempo real', [

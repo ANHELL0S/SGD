@@ -100,6 +100,24 @@ class DashboardQueryService
     // ── User ──────────────────────────────────────────────────────────────────
 
     /**
+     * Invalida el caché de stats para todos los usuarios de las áreas dadas.
+     * Llamar antes de emitir el evento WebSocket para que el reload traiga datos frescos.
+     *
+     * @param int[] $areaIds
+     */
+    public function invalidarStatsDeAreas(array $areaIds): void
+    {
+        $areaIds = array_values(array_filter($areaIds));
+        if (empty($areaIds)) {
+            return;
+        }
+
+        User::whereIn('area_id', $areaIds)
+            ->pluck('id_user')
+            ->each(fn (int $userId) => Cache::forget("dashboard_user_{$userId}_stats"));
+    }
+
+    /**
      * Conteos operacionales sensibles al tiempo: pendientes y movimientos activos.
      */
     public function userStats(int $userId, ?int $areaId): array
