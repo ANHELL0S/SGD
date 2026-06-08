@@ -77,7 +77,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i \
+        -e 's/<policy domain="coder" rights="none" pattern="PS" \/>/<policy domain="coder" rights="read|write" pattern="PS" \/>/' \
+        -e 's/<policy domain="coder" rights="none" pattern="PS2" \/>/<policy domain="coder" rights="read|write" pattern="PS2" \/>/' \
+        -e 's/<policy domain="coder" rights="none" pattern="PS3" \/>/<policy domain="coder" rights="read|write" pattern="PS3" \/>/' \
+        -e 's/<policy domain="coder" rights="none" pattern="EPS" \/>/<policy domain="coder" rights="read|write" pattern="EPS" \/>/' \
+        -e 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/' \
+        /etc/ImageMagick-6/policy.xml
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

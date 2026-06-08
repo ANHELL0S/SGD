@@ -8,6 +8,7 @@ import {
     Layers,
     Upload,
     AlertCircle,
+    FileX,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -102,6 +103,7 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
     const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
     const [arquivo, setArquivo] = useState<File | null>(null);
     const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>(`/storage/${documento.archivo}`);
+    const [pdfStatus, setPdfStatus] = useState<'loading' | 'ok' | 'error'>('loading');
     const previewUrlRef = useRef<string | null>(null);
 
     const {
@@ -135,6 +137,20 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
             }
         };
     }, []);
+
+    useEffect(() => {
+        setPdfStatus('loading');
+        // Para blob URLs (archivo recién seleccionado) siempre son válidas
+        if (pdfPreviewUrl.startsWith('blob:')) {
+            setPdfStatus('ok');
+            return;
+        }
+        const controller = new AbortController();
+        fetch(pdfPreviewUrl, { method: 'HEAD', signal: controller.signal })
+            .then((res) => setPdfStatus(res.ok ? 'ok' : 'error'))
+            .catch(() => setPdfStatus('error'));
+        return () => controller.abort();
+    }, [pdfPreviewUrl]);
 
     const handleFile = (file: File | null): void => {
         if (file && file.size > 2 * 1024 * 1024) {
@@ -245,11 +261,23 @@ export default function Edit({ documento, remitentes, tipos }: Props) {
                     <div className="xl:sticky xl:top-8 order-2 xl:order-1">
                         <Card className="overflow-hidden flex flex-col h-[500px]">
                             <CardContent className="p-0 pt-0 flex-1 relative bg-[var(--card)]">
-                                <iframe
-                                    title="Vista previa"
-                                    src={`${pdfPreviewUrl}#view=FitH&navpanes=0`}
-                                    className="h-full w-full border-none min-h-[320px]"
-                                />
+                                {pdfStatus === 'error' ? (
+                                    <div className="h-full w-full min-h-[320px] flex flex-col items-center justify-center gap-3 bg-muted/40 text-muted-foreground select-none">
+                                        <FileX className="h-12 w-12 opacity-40" />
+                                        <p className="text-sm font-medium">No hay PDF cargado</p>
+                                        <p className="text-xs opacity-60">Selecciona un archivo para reemplazarlo</p>
+                                    </div>
+                                ) : pdfStatus === 'loading' ? (
+                                    <div className="h-full w-full min-h-[320px] flex items-center justify-center bg-muted/20 text-muted-foreground">
+                                        <span className="text-xs animate-pulse">Cargando PDF…</span>
+                                    </div>
+                                ) : (
+                                    <iframe
+                                        title="Vista previa"
+                                        src={`${pdfPreviewUrl}#view=FitH&navpanes=0`}
+                                        className="h-full w-full border-none min-h-[320px]"
+                                    />
+                                )}
                                 {!arquivo ? (
                                     <label className="absolute bottom-2 right-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg hover:opacity-90 transition-all">
                                         <Upload className="h-4 w-4" />
