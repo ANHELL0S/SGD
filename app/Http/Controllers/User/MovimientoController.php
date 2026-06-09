@@ -155,8 +155,10 @@ class MovimientoController extends Controller
                             'area'     => ['nombre' => $movimiento->remitente?->area?->nombre],
                         ],
                         'destinatario'         => ['nombre' => $movimiento->destinatario?->nombre, 'apellido' => $movimiento->destinatario?->apellido],
-                        'comentario'           => $movimiento->comentario,
-                        'fecha_envio'          => $movimiento->fecha_envio,
+                        'comentario'              => $movimiento->comentario,
+                        'respuesta_comentario'    => $movimiento->respuesta_comentario,
+                        'es_respuesta_comentario' => (bool) $movimiento->es_respuesta_comentario,
+                        'fecha_envio'             => $movimiento->fecha_envio,
                         'fecha_recepcion'      => $movimiento->fecha_recepcion,
                         'direccion'            => $movimiento->de_area_id === $user->area_id ? 'salida' : 'entrada',
                         'estado'               => $movimiento->fecha_recepcion === null ? 'pendiente' : 'recibido',
@@ -302,10 +304,21 @@ class MovimientoController extends Controller
             ]);
         }
 
-        $movimientoId = null;
+        /** @var array<int, array{a_area_id: int, destinatario_user_id: int}> $copiasInput */
+        $copiasInput = collect($request->input('copias', []))
+            ->filter(fn($c) => !empty($c['a_area_id']) && !empty($c['destinatario_user_id']))
+            ->map(fn($c) => [
+                'a_area_id'            => (int) $c['a_area_id'],
+                'destinatario_user_id' => (int) $c['destinatario_user_id'],
+            ])
+            ->values()
+            ->all();
+
+        $movimientoId  = null;
+        $copiaIds      = [];
 
         try {
-            DB::transaction(function () use ($documento, $deAreaId, $aAreaId, $destinatarioUserId, $request, $user, &$movimientoId): void {
+            DB::transaction(function () use ($documento, $deAreaId, $aAreaId, $destinatarioUserId, $request, $user, $copiasInput, &$movimientoId, &$copiaIds): void {
                 $expedienteId = $documento->expediente_id;
 
                 if ($expedienteId === null) {
@@ -337,44 +350,65 @@ class MovimientoController extends Controller
                 }
 
                 $movimiento = Movimiento::create([
-                    'documento_id' => $documento->id_documento,
-                    'expediente_id' => $expedienteId,
-                    'de_area_id' => $deAreaId,
-                    'a_area_id' => $aAreaId,
-                    'destinatario_user_id' => $destinatarioUserId,
-                    'enviado_por' => $user->id_user,
-                    'comentario' => $request->input('comentario'),
-                    'fecha_envio' => now(),
+                    'documento_id'          => $documento->id_documento,
+                    'expediente_id'         => $expedienteId,
+                    'de_area_id'            => $deAreaId,
+                    'a_area_id'             => $aAreaId,
+                    'destinatario_user_id'  => $destinatarioUserId,
+                    'enviado_por'           => $user->id_user,
+                    'comentario'            => $request->input('comentario'),
+                    'fecha_envio'           => now(),
+                    'es_copia'              => false,
                 ]);
 
                 $movimientoId = $movimiento->id_movimiento;
 
+                // Copias informativas — no mueven area_actual_id del documento
+                foreach ($copiasInput as $copia) {
+                    $movCopia = Movimiento::create([
+                        'documento_id'          => $documento->id_documento,
+                        'expediente_id'         => $expedienteId,
+                        'de_area_id'            => $deAreaId,
+                        'a_area_id'             => $copia['a_area_id'],
+                        'destinatario_user_id'  => $copia['destinatario_user_id'],
+                        'enviado_por'           => $user->id_user,
+                        'comentario'            => $request->input('comentario'),
+                        'fecha_envio'           => now(),
+                        'es_copia'              => true,
+                        'movimiento_original_id' => $movimientoId,
+                    ]);
+                    $copiaIds[] = $movCopia->id_movimiento;
+                }
+
                 $documento->update([
                     'area_actual_id' => $aAreaId,
-                    'recibido' => 'enviado',
+                    'recibido'       => 'enviado',
                 ]);
             });
         } catch (Throwable $exception) {
             $this->logDatabaseError('Error de base de datos al enviar documento', $exception, [
-                'documento_id' => $documento->id_documento,
-                'de_area_id' => $deAreaId,
-                'a_area_id' => $aAreaId,
-                'destinatario_user_id' => $destinatarioUserId,
-                'enviado_por' => $user->id_user,
+                'documento_id'          => $documento->id_documento,
+                'de_area_id'            => $deAreaId,
+                'a_area_id'             => $aAreaId,
+                'destinatario_user_id'  => $destinatarioUserId,
+                'enviado_por'           => $user->id_user,
+                'total_copias'          => count($copiasInput),
             ]);
 
             throw $exception;
         }
 
         Log::channel('movimientos')->info('Documento enviado', [
-            'id_movimiento' => $movimientoId,
-            'documento_id' => $documento->id_documento,
-            'de_area_id' => $deAreaId,
-            'a_area_id' => $aAreaId,
+            'id_movimiento'   => $movimientoId,
+            'documento_id'    => $documento->id_documento,
+            'de_area_id'      => $deAreaId,
+            'a_area_id'       => $aAreaId,
             'destinatario_user_id' => $destinatarioUserId,
-            'enviado_por' => $user->id_user,
+            'enviado_por'     => $user->id_user,
+            'copias'          => $copiaIds,
         ]);
 
+        // Broadcasting del movimiento original
         if ($movimientoId !== null) {
             $movimiento = Movimiento::query()
                 ->with([
@@ -387,14 +421,16 @@ class MovimientoController extends Controller
                 ->first();
 
             if ($movimiento !== null) {
+                $allAreaIds = array_merge([$deAreaId, $aAreaId], array_column($copiasInput, 'a_area_id'));
                 $this->dispatchMovimientoActualizado(
                     'enviado',
                     $this->buildBroadcastPayload($movimiento, $user),
-                    [$deAreaId, $aAreaId],
+                    $allAreaIds,
                 );
             }
         }
 
+        // Notificación al destinatario original
         if ($movimientoId !== null) {
             $movimientoParaNotif = Movimiento::query()
                 ->with(['deArea:id_area,nombre', 'aArea:id_area,nombre'])
@@ -402,6 +438,22 @@ class MovimientoController extends Controller
 
             if ($movimientoParaNotif !== null) {
                 $this->notificarDestinatarios($documento, $movimientoParaNotif, $aAreaId, $destinatarioUserId);
+            }
+        }
+
+        // Notificaciones a destinatarios de copias
+        foreach ($copiaIds as $copiaId) {
+            $moviCopia = Movimiento::query()
+                ->with(['deArea:id_area,nombre', 'aArea:id_area,nombre'])
+                ->find($copiaId);
+
+            if ($moviCopia !== null) {
+                $this->notificarDestinatarios(
+                    $documento,
+                    $moviCopia,
+                    $moviCopia->a_area_id,
+                    $moviCopia->destinatario_user_id,
+                );
             }
         }
 
@@ -721,14 +773,15 @@ class MovimientoController extends Controller
 
                 // Crear el movimiento de respuesta (B→A) referenciando el mismo documento
                 $movimientoRespuesta = Movimiento::create([
-                    'documento_id'         => $movimiento->documento_id,
-                    'de_area_id'           => $user->area_id,
-                    'a_area_id'            => $movimiento->de_area_id,
-                    'destinatario_user_id' => $movimiento->enviado_por,
-                    'enviado_por'          => $user->id_user,
-                    'comentario'           => $request->input('comentario_envio'),
-                    'fecha_envio'          => now(),
-                    'expediente_id'        => $movimiento->expediente_id,
+                    'documento_id'            => $movimiento->documento_id,
+                    'de_area_id'              => $user->area_id,
+                    'a_area_id'               => $movimiento->de_area_id,
+                    'destinatario_user_id'    => $movimiento->enviado_por,
+                    'enviado_por'             => $user->id_user,
+                    'comentario'              => $request->input('comentario_envio'),
+                    'fecha_envio'             => now(),
+                    'expediente_id'           => $movimiento->expediente_id,
+                    'es_respuesta_comentario' => true,
                 ]);
 
                 $movimientoRespuestaId = $movimientoRespuesta->id_movimiento;
@@ -1073,8 +1126,10 @@ class MovimientoController extends Controller
                     'apellido' => $movimiento->remitente?->apellido,
                     'area' => ['nombre' => $movimiento->remitente?->area?->nombre],
                 ],
-                'comentario' => $movimiento->comentario,
-                'fecha_envio' => $movimiento->fecha_envio,
+                'comentario'              => $movimiento->comentario,
+                'respuesta_comentario'    => $movimiento->respuesta_comentario,
+                'es_respuesta_comentario' => (bool) $movimiento->es_respuesta_comentario,
+                'fecha_envio'             => $movimiento->fecha_envio,
                 'fecha_recepcion' => $movimiento->fecha_recepcion,
                 'direccion' => $movimiento->de_area_id === $user->area_id ? 'salida' : 'entrada',
                 'estado' => $movimiento->fecha_recepcion === null ? 'pendiente' : 'recibido',

@@ -141,7 +141,6 @@ class ExpedienteController extends Controller
         $user = $request->user();
         abort_unless($user !== null, 403);
 
-        // Solo admin o creador del expediente pueden cerrarlo
         abort_unless(
             $user->rol === 'admin' || $expediente->area_creadora_id === $user->area_id,
             403
@@ -151,21 +150,42 @@ class ExpedienteController extends Controller
             return back()->with('warning', 'El expediente ya estaba cerrado.');
         }
 
-        DB::transaction(function () use ($expediente, $user): void {
-            $expediente->update([
-                'estado' => 'cerrado',
+        $validated = $request->validate([
+            'motivo' => ['required', 'string', 'min:5', 'max:500'],
+        ], [
+            'motivo.required' => 'Debes ingresar un motivo para cerrar la conversación.',
+            'motivo.min'      => 'El motivo debe tener al menos 5 caracteres.',
+            'motivo.max'      => 'El motivo no puede superar los 500 caracteres.',
+        ]);
+
+        try {
+            DB::transaction(function () use ($expediente, $user, $validated): void {
+                $expediente->update([
+                    'estado'              => 'cerrado',
+                    'motivo_cierre'       => $validated['motivo'],
+                    'cerrado_por_user_id' => $user->id_user,
+                    'cerrado_at'          => now(),
+                ]);
+
+                Log::channel('movimientos')->info('Expediente cerrado manualmente', [
+                    'expediente_id'       => $expediente->id_expediente,
+                    'codigo_expediente'   => $expediente->codigo_expediente,
+                    'cerrado_por_user_id' => $user->id_user,
+                    'cerrado_por_area_id' => $user->area_id,
+                    'motivo'              => $validated['motivo'],
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::channel('errores')->error('Error al cerrar expediente', [
+                'expediente_id' => $expediente->id_expediente,
+                'exception'     => $e->getMessage(),
             ]);
 
-            Log::channel('movimientos')->info('Expediente cerrado manualmente', [
-                'expediente_id' => $expediente->id_expediente,
-                'codigo_expediente' => $expediente->codigo_expediente,
-                'cerrado_por_user_id' => $user->id_user,
-                'cerrado_por_area_id' => $user->area_id,
-            ]);
-        });
+            return back()->withErrors(['motivo' => 'Ocurrió un error al cerrar la conversación. Intenta de nuevo.']);
+        }
 
         return redirect()->to(route('user.movimientos.index', ['tab' => 'cerrados']))
-            ->with('success', 'El expediente se cerró correctamente. Ya no se podrán enviar ni responder movimientos.');
+            ->with('success', 'La conversación se cerró correctamente. Ya no se podrán enviar ni responder movimientos.');
     }
 
     /**

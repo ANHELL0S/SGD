@@ -34,12 +34,16 @@ class Expediente extends Model
         'fecha_inicio',
         'prioridad',
         'area_creadora_id',
+        'motivo_cierre',
+        'cerrado_por_user_id',
+        'cerrado_at',
     ];
 
     protected function casts(): array
     {
         return [
             'fecha_inicio' => 'date',
+            'cerrado_at'   => 'datetime',
         ];
     }
 
@@ -51,6 +55,16 @@ class Expediente extends Model
     public function areaCreadora(): BelongsTo
     {
         return $this->belongsTo(Area::class, 'area_creadora_id', 'id_area');
+    }
+
+    /**
+     * Usuario que cerró el expediente.
+     *
+     * @return BelongsTo<User, self>
+     */
+    public function cerradoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cerrado_por_user_id', 'id_user');
     }
 
     /**

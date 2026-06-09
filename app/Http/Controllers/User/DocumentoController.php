@@ -247,6 +247,8 @@ class DocumentoController extends Controller
                 'comentario',
                 'fecha_envio',
                 'fecha_recepcion',
+                'es_copia',
+                'movimiento_original_id',
             ]);
 
         return Inertia::render('user/documentos/show', [

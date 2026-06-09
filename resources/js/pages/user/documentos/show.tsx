@@ -17,6 +17,9 @@ import {
     Building2,
     Activity,
     ScanText,
+    Copy,
+    Plus,
+    X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -83,6 +86,13 @@ type Movimiento = {
     a_area: { nombre: string } | null;
     destinatario: { nombre: string; apellido: string | null } | null;
     remitente: { nombre: string; apellido: string | null } | null;
+    es_copia: boolean;
+    movimiento_original_id: number | null;
+};
+
+type CopiaFormItem = {
+    a_area_id: string;
+    destinatario_user_id: string;
 };
 
 type Area = {
@@ -194,8 +204,9 @@ function InfoRow({ icon: Icon, label, children }: {
 /**
  * Ítem del historial de movimientos en línea de tiempo.
  * Muestra icono verde si ya fue recibido, ámbar si está pendiente.
- * Si `canInteract` es true (el área actual es la destinataria), muestra los botones
- * "Marcar recibido" y "Responder".
+ * Si es una copia (es_copia=true), muestra badge "CC" y no permite responder.
+ * Si `canInteract` es true (el área actual es la destinataria y no es copia), muestra
+ * los botones "Marcar recibido" y "Responder".
  */
 function TimelineItem({
     mov, isLast, canInteract, processingRecepcion, onReceive,
@@ -207,6 +218,7 @@ function TimelineItem({
     onReceive: (id: number) => void;
 }) {
     const isReceived = !!mov.fecha_recepcion;
+    const esCopia = mov.es_copia;
 
     return (
         <div className="flex gap-3 relative">
@@ -214,11 +226,17 @@ function TimelineItem({
                 <div className="absolute left-[13px] top-7 bottom-0 w-px bg-border/40" />
             )}
             <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 border ${
-                isReceived ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+                esCopia
+                    ? 'bg-sky-50 border-sky-200'
+                    : isReceived
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : 'bg-amber-50 border-amber-200'
             }`}>
-                {isReceived
-                    ? <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                    : <Clock className="h-3.5 w-3.5 text-amber-500" />
+                {esCopia
+                    ? <Copy className="h-3.5 w-3.5 text-sky-500" />
+                    : isReceived
+                        ? <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                        : <Clock className="h-3.5 w-3.5 text-amber-500" />
                 }
             </div>
 
@@ -227,7 +245,12 @@ function TimelineItem({
                     <span className="text-xs font-medium text-foreground">{mov.de_area?.nombre ?? '-'}</span>
                     <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
                     <span className="text-xs font-medium text-foreground">{mov.a_area?.nombre ?? '-'}</span>
-                    {!isReceived && (
+                    {esCopia && (
+                        <Badge variant="outline" className="text-[10px] border-sky-200 bg-sky-50 text-sky-700 ml-auto">
+                            CC
+                        </Badge>
+                    )}
+                    {!esCopia && !isReceived && (
                         <Badge variant="outline" className="text-[10px] border-amber-200 bg-amber-50 text-amber-700 ml-auto">
                             Pendiente
                         </Badge>
@@ -256,7 +279,7 @@ function TimelineItem({
                     </p>
                 )}
 
-                {canInteract && (
+                {canInteract && !esCopia && (
                     <div className="flex gap-2 mt-2">
                         {!isReceived && (
                             <Button
@@ -284,33 +307,59 @@ function TimelineItem({
 
 /**
  * Sheet lateral para trasladar el documento a otra área.
- * Filtra los usuarios destino por el área seleccionada.
+ * Incluye sección "Copias a" (CC) para enviar copias informativas a otras áreas.
+ * Los destinatarios de copia reciben notificación pero no pueden responder.
  * Deshabilitado si `canSend` es false (ya hay un movimiento pendiente sin respuesta).
  */
 function SendSheet({
     canSend, open, onOpenChange, areas, usuariosDestino,
-    formData, errors, processing, onFieldChange, onSubmit,
+    formData, errors, processing, onFieldChange, onCopiasChange, onSubmit,
 }: {
     canSend: boolean;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     areas: Area[];
     usuariosDestino: UsuarioDestino[];
-    formData: { a_area_id: string; destinatario_user_id: string; comentario: string };
+    formData: { a_area_id: string; destinatario_user_id: string; comentario: string; copias: CopiaFormItem[] };
     errors: Record<string, string>;
     processing: boolean;
     onFieldChange: (field: string, value: string) => void;
+    onCopiasChange: (copias: CopiaFormItem[]) => void;
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
     const usuariosFiltrados = usuariosDestino.filter(
         (u) => String(u.area_id ?? '') === formData.a_area_id
     );
 
+    // Áreas ya seleccionadas (original + copias) para evitar duplicados
+    const areasOcupadas = new Set([
+        formData.a_area_id,
+        ...formData.copias.map((c) => c.a_area_id).filter(Boolean),
+    ]);
+
+    const agregarCopia = () => {
+        if (formData.copias.length >= 10) return;
+        onCopiasChange([...formData.copias, { a_area_id: '', destinatario_user_id: '' }]);
+    };
+
+    const eliminarCopia = (index: number) => {
+        onCopiasChange(formData.copias.filter((_, i) => i !== index));
+    };
+
+    const actualizarCopia = (index: number, field: keyof CopiaFormItem, value: string) => {
+        const nuevas = formData.copias.map((c, i) =>
+            i === index
+                ? { ...c, [field]: value, ...(field === 'a_area_id' ? { destinatario_user_id: '' } : {}) }
+                : c
+        );
+        onCopiasChange(nuevas);
+    };
+
     return (
         <Sheet open={open} onOpenChange={(next) => {
  if (canSend) {
 onOpenChange(next);
-} 
+}
 }}>
             <SheetTrigger asChild>
                 <Button
@@ -330,20 +379,22 @@ onOpenChange(next);
                 </SheetHeader>
                 <form className="flex flex-1 flex-col overflow-y-auto" onSubmit={onSubmit}>
                     <div className="flex-1 space-y-5 px-5 py-5">
+
+                        {/* ── Destinatario original ── */}
                         <div className="space-y-1.5">
                             <Label htmlFor="a_area_id">Área destino</Label>
                             <Select
                                 value={formData.a_area_id}
                                 onValueChange={(v) => {
- onFieldChange('a_area_id', v); onFieldChange('destinatario_user_id', ''); 
+ onFieldChange('a_area_id', v); onFieldChange('destinatario_user_id', '');
 }}
                             >
                                 <SelectTrigger id="a_area_id" className="w-full">
                                     <SelectValue placeholder="Selecciona un área" />
                                 </SelectTrigger>
-                                <SelectContent >
+                                <SelectContent>
                                     {areas.map((area) => (
-                                        <SelectItem key={area.id_area} value={String(area.id_area)} >
+                                        <SelectItem key={area.id_area} value={String(area.id_area)}>
                                             {area.nombre}
                                         </SelectItem>
                                     ))}
@@ -373,6 +424,7 @@ onOpenChange(next);
                             </Select>
                             {errors.destinatario_user_id && <p className="text-xs text-red-600">{errors.destinatario_user_id}</p>}
                         </div>
+
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="comentario">
@@ -385,7 +437,7 @@ onOpenChange(next);
                             <Textarea
                                 id="comentario"
                                 placeholder="Ej: Para revisión, Para firma, etc."
-                                required rows={5}
+                                required rows={4}
                                 maxLength={400}
                                 value={formData.comentario}
                                 onChange={(e) => onFieldChange('comentario', e.target.value)}
@@ -393,6 +445,107 @@ onOpenChange(next);
                             />
                             {errors.comentario && <p className="text-xs text-red-600">{errors.comentario}</p>}
                         </div>
+
+                        {/* ── Copias (CC) ── */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                    <Copy className="h-3.5 w-3.5 text-sky-500" />
+                                    <Label className="text-sm">Copias a (CC)</Label>
+                                    <span className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
+                                        Opcional
+                                    </span>
+                                </div>
+                                {formData.copias.length < 10 && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={agregarCopia}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                        Agregar
+                                    </Button>
+                                )}
+                            </div>
+
+                            {formData.copias.length === 0 && (
+                                <p className="text-[11px] text-muted-foreground text-center py-2 bg-muted/30 rounded border border-dashed">
+                                    Sin copias. Usa "Agregar" para enviar copias informativas.
+                                </p>
+                            )}
+
+                            {formData.copias.map((copia, i) => {
+                                const usuariosCopia = usuariosDestino.filter(
+                                    (u) => String(u.area_id ?? '') === copia.a_area_id
+                                );
+                                const areasDisponibles = areas.filter(
+                                    (a) => !areasOcupadas.has(String(a.id_area)) || String(a.id_area) === copia.a_area_id
+                                );
+
+                                return (
+                                    <div key={i} className="rounded-md border border-sky-100 bg-sky-50/40 p-3 space-y-2.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-medium text-sky-700">
+                                                Copia {i + 1}
+                                            </span>
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                                                onClick={() => eliminarCopia(i)}
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Select
+                                                value={copia.a_area_id}
+                                                onValueChange={(v) => actualizarCopia(i, 'a_area_id', v)}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs w-full">
+                                                    <SelectValue placeholder="Área" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {areasDisponibles.map((area) => (
+                                                        <SelectItem key={area.id_area} value={String(area.id_area)}>
+                                                            {area.nombre}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {errors[`copias.${i}.a_area_id`] && (
+                                                <p className="text-xs text-red-600">{errors[`copias.${i}.a_area_id`]}</p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Select
+                                                value={copia.destinatario_user_id}
+                                                onValueChange={(v) => actualizarCopia(i, 'destinatario_user_id', v)}
+                                                disabled={!copia.a_area_id}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs w-full">
+                                                    <SelectValue placeholder="Usuario" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {usuariosCopia.map((u) => (
+                                                        <SelectItem key={u.id_user} value={String(u.id_user)}>
+                                                            {formatFullName(u.nombre, u.apellido)}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {errors[`copias.${i}.destinatario_user_id`] && (
+                                                <p className="text-xs text-red-600">{errors[`copias.${i}.destinatario_user_id`]}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
                     </div>
                     <SheetFooter>
                         <Button
@@ -447,11 +600,18 @@ export default function Show({
             .catch(() => setPdfStatus('error'));
     }, [documento.archivo]);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset } = useForm<{
+        id_documento: number;
+        a_area_id: string;
+        destinatario_user_id: string;
+        comentario: string;
+        copias: CopiaFormItem[];
+    }>({
         id_documento: documento.id_documento,
         a_area_id: '',
         destinatario_user_id: '',
         comentario: '',
+        copias: [],
     });
 
     const { patch, processing: processingRecepcion } = useForm({});
@@ -476,7 +636,7 @@ toast.success(flash.success, { id: 'flash-success' });
             preserveScroll: true,
             preserveState: false,
             onSuccess: () => {
-                reset('a_area_id', 'destinatario_user_id', 'comentario');
+                reset('a_area_id', 'destinatario_user_id', 'comentario', 'copias');
                 setIsSendSheetOpen(false);
                 toast.success(
                     areaNombre
@@ -550,6 +710,7 @@ toast.success(flash.success, { id: 'flash-success' });
                             errors={errors}
                             processing={processing}
                             onFieldChange={setData}
+                            onCopiasChange={(copias) => setData('copias', copias)}
                             onSubmit={handleSubmitMovimiento}
                         />
                     )}

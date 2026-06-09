@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     Building2,
     Check,
@@ -17,6 +17,7 @@ import {
     GitBranch,
     FolderOpen,
     X,
+    AlertTriangle,
 } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -38,7 +39,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Pagination,
     PaginationContent,
@@ -112,6 +122,8 @@ type MovimientoItem = {
         apellido: string | null;
     } | null;
     comentario: string | null;
+    respuesta_comentario: string | null;
+    es_respuesta_comentario: boolean;
     fecha_envio: string | null;
     fecha_recepcion: string | null;
     direccion: 'salida' | 'entrada';
@@ -463,7 +475,7 @@ const MovimientoActions = ({
 
     return (
         <div className="ml-auto flex items-center gap-2">
-            {movimiento.documento?.id_documento && (
+            {movimiento.documento?.id_documento && !movimiento.es_respuesta_comentario && (
                 <Button
                     asChild
                     size="sm"
@@ -609,6 +621,9 @@ return getRelativeTime(movimiento.fecha_envio);
 
     // Tiempo transcurrido para el badge
     const tiempoTranscurrido = getRelativeTime(movimiento.fecha_envio);
+
+    const esRespuesta =
+        movimiento.es_respuesta_comentario || !!movimiento.documento?.movimiento_origen_id;
 
     return (
         <Card
@@ -769,7 +784,7 @@ return getRelativeTime(movimiento.fecha_envio);
                                 {formatTime(movimiento.fecha_recepcion)}
                             </span>
                         )}
-                        {movimiento.comentario?.trim() && (
+                        {movimiento.comentario?.trim() && !movimiento.es_respuesta_comentario && (
                             <span className="flex min-w-0 items-center gap-1">
                                 <MessageSquare className="h-3.5 w-3.5 shrink-0" />
                                 <span className="line-clamp-1 truncate">
@@ -814,6 +829,21 @@ return getRelativeTime(movimiento.fecha_envio);
                         </div>
                     )}
 
+                    {/* Comentario de respuesta — solo en el movimiento B (es_respuesta_comentario=true) */}
+                    {movimiento.es_respuesta_comentario && movimiento.comentario?.trim() && (
+                        <div className="rounded-md border border-emerald-200 bg-emerald-50/70 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+                            <div className="mb-1 flex items-center gap-1.5">
+                                <MessageSquare className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                    Respuesta por comentario
+                                </span>
+                            </div>
+                            <p className="text-xs leading-relaxed text-emerald-900/80 dark:text-emerald-200/80 line-clamp-3">
+                                {movimiento.comentario.trim()}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Footer: badges de estado + acciones */}
                     <div className="flex flex-wrap items-center gap-2 border-t pt-1">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -829,10 +859,17 @@ return getRelativeTime(movimiento.fecha_envio);
                             {movimiento.respuesta_enviada && (
                                 <Badge
                                     variant="outline"
-                                    className="rounded-full border-chart-4/10 bg-background/10 px-2.5 py-0.5 text-xs font-bold text-chart-4 backdrop-blur-sm"
+                                    className={cn(
+                                        'rounded-full px-2.5 py-0.5 text-xs font-bold backdrop-blur-sm',
+                                        movimiento.respuesta_comentario
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                            : 'border-chart-4/10 bg-background/10 text-chart-4',
+                                    )}
                                 >
                                     <Check className="mr-1 h-3 w-3" />
-                                    Respondido
+                                    {movimiento.respuesta_comentario
+                                        ? 'Respondido (comentario)'
+                                        : 'Respondido'}
                                 </Badge>
                             )}
                         </div>
@@ -907,6 +944,47 @@ export default function Index({
     const [busquedaCerrados, setBusquedaCerrados] = useState(
         filters?.busqueda_cerrados ?? '',
     );
+
+    // ── Modal de cierre de conversación ──────────────────────────────────────
+    const [cierreModal, setCierreModal] = useState<{
+        open: boolean;
+        expedienteId: number | null;
+        codigoExpediente: string;
+    }>({ open: false, expedienteId: null, codigoExpediente: '' });
+
+    const {
+        data: cierreData,
+        setData: setCierreData,
+        patch: patchCierre,
+        processing: processingCierre,
+        errors: cierreErrors,
+        reset: resetCierre,
+    } = useForm({ motivo: '' });
+
+    const abrirModalCierre = (expedienteId: number, codigoExpediente: string) => {
+        resetCierre();
+        setCierreModal({ open: true, expedienteId, codigoExpediente });
+    };
+
+    const cerrarModalCierre = () => {
+        if (processingCierre) return;
+        setCierreModal({ open: false, expedienteId: null, codigoExpediente: '' });
+        resetCierre();
+    };
+
+    const confirmarCierre = () => {
+        if (!cierreModal.expedienteId || !cierreData.motivo.trim()) return;
+
+        patchCierre(cerrarExpediente.url(cierreModal.expedienteId), {
+            preserveScroll: true,
+            onSuccess: () => {
+                cerrarModalCierre();
+            },
+            onError: () => {
+                // Los errores de validación se muestran en el propio modal
+            },
+        });
+    };
     const [busquedaVencidos, setBusquedaVencidos] = useState(
         filters?.busqueda_vencidos ?? '',
     );
@@ -1241,10 +1319,9 @@ throw new Error();
                                                 className="h-6 border-red-200 bg-red-50 px-2 text-[11px] text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    router.patch(
-                                                        cerrarExpediente.url(
-                                                            expediente.expediente_id,
-                                                        ),
+                                                    abrirModalCierre(
+                                                        expediente.expediente_id,
+                                                        expediente.codigo_expediente,
                                                     );
                                                 }}
                                             >
@@ -1623,6 +1700,87 @@ throw new Error();
                     </TabsContent>
                 </Tabs>
             </div>
+
+            {/* ── Modal: Cerrar Conversación ── */}
+            <Dialog
+                open={cierreModal.open}
+                onOpenChange={(open) => { if (!open) cerrarModalCierre(); }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                            Cerrar conversación
+                        </DialogTitle>
+                        <DialogDescription>
+                            Expediente{' '}
+                            <span className="font-medium text-foreground">
+                                {cierreModal.codigoExpediente}
+                            </span>
+                            . Al cerrar no se podrán enviar ni responder nuevos movimientos.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-1">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="motivo-cierre">
+                                Motivo del cierre{' '}
+                                <span className="text-red-500">*</span>
+                            </Label>
+                            <Textarea
+                                id="motivo-cierre"
+                                placeholder="Ej: Se completó el trámite solicitado, respuesta recibida y conforme..."
+                                rows={4}
+                                maxLength={500}
+                                value={cierreData.motivo}
+                                onChange={(e) => setCierreData('motivo', e.target.value)}
+                                className="resize-none"
+                                disabled={processingCierre}
+                                autoFocus
+                            />
+                            <div className="flex items-center justify-between">
+                                {cierreErrors.motivo ? (
+                                    <p className="text-xs text-red-600">{cierreErrors.motivo}</p>
+                                ) : (
+                                    <span />
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                    {cierreData.motivo.length}/500
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={cerrarModalCierre}
+                            disabled={processingCierre}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={processingCierre || cierreData.motivo.trim().length < 5}
+                            onClick={confirmarCierre}
+                        >
+                            {processingCierre ? (
+                                <>
+                                    <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    Cerrando...
+                                </>
+                            ) : (
+                                <>
+                                    <Lock className="mr-1.5 h-3.5 w-3.5" />
+                                    Confirmar cierre
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

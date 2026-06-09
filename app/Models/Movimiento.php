@@ -38,16 +38,21 @@ class Movimiento extends Model
         'expediente_id',
         'de_area_id',
         'a_area_id',
+        'es_copia',
+        'movimiento_original_id',
         'destinatario_user_id',
         'enviado_por',
         'comentario',
         'respuesta_comentario',
+        'es_respuesta_comentario',
         'fecha_recepcion',
         'fecha_envio',
         'ultimo_recordatorio_at',
     ];
 
     protected $casts = [
+        'es_copia'                => 'boolean',
+        'es_respuesta_comentario' => 'boolean',
         'fecha_envio'             => 'datetime',
         'fecha_recepcion'         => 'datetime',
         'ultimo_recordatorio_at'  => 'datetime',
@@ -121,5 +126,25 @@ class Movimiento extends Model
     public function documentosGenerados(): HasMany
     {
         return $this->hasMany(Documento::class, 'movimiento_origen_id', 'id_movimiento');
+    }
+
+    /**
+     * Movimiento original al que esta copia está vinculada (solo si es_copia = true).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<self, self>
+     */
+    public function movimientoOriginal(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'movimiento_original_id', 'id_movimiento');
+    }
+
+    /**
+     * Copias enviadas junto a este movimiento original.
+     *
+     * @return HasMany<self>
+     */
+    public function copias(): HasMany
+    {
+        return $this->hasMany(self::class, 'movimiento_original_id', 'id_movimiento');
     }
 }
