@@ -28,7 +28,7 @@ php artisan storage:link --quiet 2>/dev/null || true
 
 # Ejecutar migraciones y seed inicial (AdminSeeder usa updateOrCreate, es idempotente)
 echo "[entrypoint] Ejecutando migraciones..."
-php artisan migrate --force
+php artisan migrate --force --graceful
 echo "[entrypoint] Ejecutando seeders..."
 php artisan db:seed --force || echo "[entrypoint] ADVERTENCIA: seeder falló, continuando..."
 

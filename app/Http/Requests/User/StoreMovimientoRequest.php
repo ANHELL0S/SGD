@@ -78,8 +78,10 @@ class StoreMovimientoRequest extends FormRequest
                 return;
             }
 
-            $areaOriginal  = $this->integer('a_area_id');
-            $areasUsadas   = [$areaOriginal];
+            $areaOriginal     = $this->integer('a_area_id');
+            $usuarioOriginal  = $this->integer('destinatario_user_id');
+            // Rastrear combos área+usuario ya usados (incluye el movimiento original)
+            $combosUsados = ["{$areaOriginal}_{$usuarioOriginal}"];
 
             foreach ($copias as $i => $copia) {
                 $aAreaId = isset($copia['a_area_id']) ? (int) $copia['a_area_id'] : null;
@@ -89,25 +91,18 @@ class StoreMovimientoRequest extends FormRequest
                     continue;
                 }
 
-                // El área de la copia no puede ser igual al área del original
-                if ($aAreaId === $areaOriginal) {
+                $combo = "{$aAreaId}_{$userId}";
+
+                // No se permite enviar dos veces al mismo usuario (incluye el destinatario original)
+                if (in_array($combo, $combosUsados, true)) {
                     $validator->errors()->add(
-                        "copias.{$i}.a_area_id",
-                        'El área de la copia no puede ser la misma que el área del original.',
+                        "copias.{$i}.destinatario_user_id",
+                        'Ya existe un envío dirigido a este usuario.',
                     );
                     continue;
                 }
 
-                // No se permite enviar dos copias a la misma área
-                if (in_array($aAreaId, $areasUsadas, true)) {
-                    $validator->errors()->add(
-                        "copias.{$i}.a_area_id",
-                        'Ya existe una copia dirigida a esta área.',
-                    );
-                    continue;
-                }
-
-                $areasUsadas[] = $aAreaId;
+                $combosUsados[] = $combo;
 
                 // El usuario debe estar activo y pertenecer al área indicada
                 $existe = User::query()

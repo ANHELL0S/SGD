@@ -167,6 +167,7 @@ class MovimientoController extends Controller
                         'puede_responder'      => $esMovimientoEntrante && !$respuestaEnviada && !$bloqueado,
                         'dias_transcurridos'   => $diasLaborales,
                         'bloqueado'            => $bloqueado,
+                        'es_copia'             => (bool) $movimiento->es_copia,
                     ];
                 })->values();
 
@@ -1138,6 +1139,7 @@ class MovimientoController extends Controller
                 'puede_responder' => $esMovimientoEntrante && !$respuestaEnviada && !$bloqueado,
                 'dias_transcurridos' => $diasLaborales,
                 'bloqueado' => $bloqueado,
+                'es_copia' => (bool) $movimiento->es_copia,
             ];
         });
 

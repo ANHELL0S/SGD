@@ -331,10 +331,10 @@ function SendSheet({
         (u) => String(u.area_id ?? '') === formData.a_area_id
     );
 
-    // Áreas ya seleccionadas (original + copias) para evitar duplicados
-    const areasOcupadas = new Set([
-        formData.a_area_id,
-        ...formData.copias.map((c) => c.a_area_id).filter(Boolean),
+    // Combos área+usuario ya usados (original + copias confirmadas)
+    const combosUsados = new Set([
+        `${formData.a_area_id}_${formData.destinatario_user_id}`,
+        ...formData.copias.map((c) => `${c.a_area_id}_${c.destinatario_user_id}`).filter((c) => !c.startsWith('_')),
     ]);
 
     const agregarCopia = () => {
@@ -477,12 +477,15 @@ onOpenChange(next);
                             )}
 
                             {formData.copias.map((copia, i) => {
-                                const usuariosCopia = usuariosDestino.filter(
-                                    (u) => String(u.area_id ?? '') === copia.a_area_id
-                                );
-                                const areasDisponibles = areas.filter(
-                                    (a) => !areasOcupadas.has(String(a.id_area)) || String(a.id_area) === copia.a_area_id
-                                );
+                                const usuariosCopia = usuariosDestino.filter((u) => {
+                                    if (String(u.area_id ?? '') !== copia.a_area_id) return false;
+                                    const combo = `${copia.a_area_id}_${u.id_user}`;
+                                    // Excluir usuarios ya asignados en otras copias o en el envío original,
+                                    // excepto el que ya está seleccionado en esta misma fila
+                                    if (String(u.id_user) === copia.destinatario_user_id) return true;
+                                    return !combosUsados.has(combo);
+                                });
+                                const areasDisponibles = areas;
 
                                 return (
                                     <div key={i} className="rounded-md border border-sky-100 bg-sky-50/40 p-3 space-y-2.5">

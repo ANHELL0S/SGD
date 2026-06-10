@@ -133,6 +133,7 @@ type MovimientoItem = {
     puede_responder: boolean;
     dias_transcurridos: number;
     bloqueado: boolean;
+    es_copia: boolean;
 };
 
 type ExpedienteGroup = {
@@ -683,6 +684,15 @@ return getRelativeTime(movimiento.fecha_envio);
                             </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
+                            {/* Badge CC */}
+                            {movimiento.es_copia && (
+                                <Badge
+                                    variant="outline"
+                                    className="border-sky-200 bg-sky-50 px-1.5 text-[10px] font-semibold text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-400"
+                                >
+                                    CC
+                                </Badge>
+                            )}
                             {/* Badge de tiempo transcurrido */}
                             {!expedienteCerrado && (
                                 <Badge
